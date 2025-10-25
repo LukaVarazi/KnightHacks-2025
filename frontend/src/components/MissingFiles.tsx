@@ -25,7 +25,7 @@ export default function MissingFiles() {
 
   return (
     <div className="p-4 border bg-background shadow-xs dark:border-input flex flex-col gap-5">
-      <h2 className="text-xl font-bold">Missing Files</h2>
+      <h2 className="text-xl font-bold">Files</h2>
       <Separator orientation="horizontal" />
       {/* <div className="flex flex-col gap-5">
         {Object.keys(neededFiles).map((key) => (
@@ -40,7 +40,7 @@ export default function MissingFiles() {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Name</TableHead>
-            <TableHead>Missing</TableHead>
+            <TableHead className="self-end text-end">Missing</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

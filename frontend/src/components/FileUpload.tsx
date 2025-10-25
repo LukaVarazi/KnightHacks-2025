@@ -19,13 +19,13 @@ export default function FileUpload() {
   };
 
   return (
-    <div className="flex flex-col items-center max-w-[70vw] overflow-x-auto size-full">
+    <div className="flex flex-col items-center overflow-x-auto size-full">
       <Dropzone
         maxFiles={100_000}
         onDrop={handleDrop}
         onError={console.error}
         src={files}
-        className="overflow-x-auto h-full w-full"
+        className="overflow-x-auto h-full w-full rounded-none border-none"
         // disabled={files.length !== 0}
         disabled={false}
       >
@@ -53,14 +53,18 @@ function FilesPreview() {
         <FilePreview key={i} i={i} file={file} />
       ))}
 
-      <div className="flex flex-col items-center justify-center mt-auto">
-        <div className="flex size-32 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <UploadIcon size={64} className="size-16" />
+      <div className="mt-auto">
+        <Separator />
+
+        <div className="flex flex-col items-center justify-center mt-5">
+          <div className="flex size-32 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            <UploadIcon size={64} className="size-16" />
+          </div>
+          <p className="my-2 w-full truncate font-medium text-md"></p>
+          <p className="w-full text-wrap text-muted-foreground text-2xl">
+            Drag and drop / click to add more files for analysis
+          </p>
         </div>
-        <p className="my-2 w-full truncate font-medium text-md"></p>
-        <p className="w-full text-wrap text-muted-foreground text-2xl">
-          Drag and drop / click to add more files for analysis
-        </p>
       </div>
     </div>
   );
