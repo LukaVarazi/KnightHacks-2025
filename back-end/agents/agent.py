@@ -224,6 +224,15 @@ Use the following rules to determine case acceptance:
 4. If any of the required data fields (incident date, accident type, or insurance coverage) are missing, do not calculate — mark as **INCOMPLETE DATA**.
 
 ---
+
+REASONING GUIDELINES:
+
+- Use logical inference when keywords are implied (e.g., “police arrived” → police report exists; “first responders” → EMT present).
+- Handle vague or incomplete language gracefully.
+- Never skip sections; fill in "data not provided" where information is missing.
+- Always maintain a structured, factual, and professional tone.
+
+---
 OUTPUT FORMAT:
 
 Return your final response using this exact structure:
@@ -253,26 +262,40 @@ RECOMMENDATION:
 <ACCEPT CASE / REJECT CASE / INCOMPLETE DATA>
 
 REASONING SUMMARY:
-<Provide a 2–3 sentence explanation of how you reached your decision, including insurance type, data completeness, and outcome.>
+<Provide detail sentence explanation of how you reached your decision from the reasoning guidelines provided, including insurance type, data completeness, and outcome.>
 
----
 MISSING OR REJECTED CASE HANDLING:
 
-If any data is missing or if the case is **rejected**, automatically TRANSFER the output to the **client_communicator subagent** to draft a professional email to the client.  
+If any data is missing for any section, automatically generate a professional email to the client.  
 This email must:
-- Politely summarize the case findings.  
+- Politely summarize the case findings from the output format.  
+- Include the calculation summary if applicable.
+- Include the client information if available.
 - Explain why the case was rejected or which data is missing.  
 - Request the missing documents or clarifications if applicable.  
 - Maintain professional and empathetic tone.  
 
-End your output with:
+"Action: Email" to transfer the email drafting task to the 'client_communication' agent with the email summary above to draft the email.
 
-REASONING GUIDELINES:
+If case is **rejected**, automatically generate a professional email to the client.  
+This email must:
+- Politely summarize the case findings from the output format.  
+- Include the calculation summary if applicable.
+- Include the client information if available.
+- Explain why the case was rejected or which data is missing.  
+- Request the missing documents or clarifications if applicable.  
+- Maintain professional and empathetic tone.  
 
-- Use logical inference when keywords are implied (e.g., “police arrived” → police report exists; “first responders” → EMT present).
-- Handle vague or incomplete language gracefully.
-- Never skip sections; fill in "data not provided" where information is missing.
-- Always maintain a structured, factual, and professional tone.
+"Action: Email" to transfer the email drafting task to the 'client_communication' agent with the email summary above to draft the email.
+
+If case is accepted, automatically generate a professional email to the client.  
+This email must:
+- Politely summarize the case findings from the output format.  
+- Include the calculation summary from the output format.
+- Include the client information if available.
+- Maintain professional and empathetic tone.  
+
+"Action: Email" to transfer the email drafting task to the 'client_communication' agent with the email summary above to draft the email.
     """,
 )
 
@@ -280,19 +303,64 @@ agent_coordinator = Agent(
     model='gemini-2.5-flash',
     name='agent_coordinator',
     description='The main agent that oversees sub_agents.',
+    # instruction="""
+    #     You are the Agent Orchestrator, your job is to receive an Legal Case input with an indication of what is needed 
+    #     and decide which sub agent (state_management, record_wrangler, client_communication, legal_researcher,
+    #     voice_bot_scheduler, evidence_sorter) to use.
+
+    #     Here is the criteria you can you to figure out which Agent to use:
+
+    #     The Legal Case input is going to include a keyword at the end formmated like "Action: KEYWORD"
+    #     Note: If the action keyword is not explicitly stated, output the keywords:
+    #         - "Sort" - to transfer the legal case to the "evidence_sorter" sub agent
+    #         - "Sort_Initial" - to transfer the legal case to the "evidence_sorter_initial" sub agent
+    #         - "Wrangle" - to transfer the legal case to the "record_wrangler" sub agent
+
+    #     If:
+    #     1. KEYWORD = "Sort" - you will transfer the legal case to the "evidence_sorter" sub agent (dont include the action keyword)
+    #     2. KEYWORD = "Sort_Initial" - you will transfer the legal case to the "evidence_sorter_initial" sub agent (dont include the action keyword)
+    #     3. KEYWORD = "Wrangle" - you will transfer the legal case to the "record_wrangler" sub agent (dont include the action keyword)
+    #  """,
     instruction="""
-        You are the Agent Orchestrator, your job is to receive an Legal Case input with an indication of what is needed 
-        and decide which sub agent (state_management, record_wrangler, client_communication, legal_researcher,
-        voice_bot_scheduler, evidence_sorter) to use.
+You are the Agent Orchestrator. Your role is to receive a Legal Case input and decide which sub-agent to delegate it to.
 
-        Here is the criteria you can you to figure out which Agent to use:
+Your available sub-agents are:
+- state_management
+- record_wrangler
+- client_communicator
+- legal_researcher
+- voice_bot_scheduler
+- evidence_sorter
+- evidence_sorter_initial
 
-        The Legal Case input is going to include a keyword at the end formmated like "Action: KEYWORD"
+Each legal case input will end with an indicator formatted as:
+"Action: KEYWORD"
 
-        If:
-        1. KEYWORD = "Sort" - you will transfer the legal case to the "evidence_sorter" sub agent (dont include the action keyword)
-        2. KEYWORD = "Sort_Initial" - you will transfer the legal case to the "evidence_sorter_initial" sub agent (dont include the action keyword)
-        3. KEYWORD = "Wrangle" - you will transfer the legal case to the "record_wrangler" sub agent (dont include the action keyword)
+---
+### DECISION CRITERIA
+
+1. If the case includes the keyword "Action: Sort"
+   → Transfer the input (excluding the "Action:" line) to the "evidence_sorter" sub-agent.
+
+2. If the case includes the keyword "Action: Sort_Initial"
+   → Transfer the input (excluding the "Action:" line) to the "evidence_sorter_initial" sub-agent.
+
+3. If the case includes the keyword "Action: Wrangle"
+   → Transfer the input (excluding the "Action:" line) to the "record_wrangler" sub-agent.
+
+4. If the case includes the keyword "Action: Email"
+   → Transfer the input (excluding the "Action:" line) to the "client_communicator" sub-agent.
+
+4. If no Action keyword is provided, assume the default action is:
+   → "Sort_Initial", and automatically transfer to the "evidence_sorter_initial" sub-agent.
+
+### IMPORTANT NOTE
+The orchestrator should not modify the input text or perform calculations itself. 
+Its sole responsibility is to identify the correct sub-agent based on the Action keyword or default routing rule.
+
+If the input lacks an Action keyword or if the provided keyword is invalid, 
+respond with:
+"Unable to determine sub-agent. Please include a valid Action keyword (Sort, Sort_Initial, or Wrangle)."
      """,
 
     sub_agents=[state_management, record_wrangler, client_communication, evidence_sorter_initial,
