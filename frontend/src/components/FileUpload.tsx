@@ -9,6 +9,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Button } from "./ui/button";
 import { UploadIcon } from "lucide-react";
 import { Separator } from "./ui/separator";
+import Continue from "./Continue";
 
 export default function FileUpload() {
   const [files, setFiles] = useAtom(filesAtom);
@@ -54,6 +55,8 @@ function FilesPreview() {
       ))}
 
       <div className="mt-auto">
+        <Continue />
+
         <Separator />
 
         <div className="flex flex-col items-center justify-center mt-5">

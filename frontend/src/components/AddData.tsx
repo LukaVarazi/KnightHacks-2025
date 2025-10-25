@@ -1,45 +1,65 @@
 import FileUpload from "./FileUpload";
-import MissingFiles from "./MissingFiles";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "#/ui/resizable";
 import ChatPanel from "./ChatPanel";
-import Continue from "./Continue";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import StepContext from "~/lib/context";
+import { useAtomValue } from "jotai";
+import { stepAtom } from "~/lib/atom";
 
 export default function AddData() {
+  const step = useAtomValue(stepAtom);
+
   return (
-    <ResizablePanelGroup direction="vertical" className="rounded-lg border">
-      <ResizablePanel defaultSize={0}>
-        <ChatPanel />
-      </ResizablePanel>
+    <div className="flex flex-col gap-4 size-full">
+      <Tabs defaultValue="emt" className="size-full">
+        <TabsList className="w-full flex items-center">
+          <TabsTrigger value="emt">EMT / Ambulance</TabsTrigger>
+          <TabsTrigger disabled={step <= 2} value="medical">
+            Medical Records
+          </TabsTrigger>
+          <TabsTrigger disabled={step <= 3} value="insurance">
+            Insurnace Policy
+          </TabsTrigger>
+          <TabsTrigger disabled={step <= 4} value="report">
+            Report
+          </TabsTrigger>
+        </TabsList>
 
-      <ResizableHandle withHandle />
-
-      <ResizablePanel defaultSize={100}>
-        <ResizablePanelGroup direction="horizontal">
-          <ResizablePanel defaultSize={100}>
-            <FileUpload />
-          </ResizablePanel>
-
-          <ResizableHandle withHandle />
-
-          <ResizablePanel maxSize={20} defaultSize={0}>
-            <MissingFilesAndContinue />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+        <TabsContent value="emt">
+          <ResizablePortion step={1} />
+        </TabsContent>
+        <TabsContent value="medical">
+          <ResizablePortion step={2} />
+        </TabsContent>
+        <TabsContent value="insurance">
+          <ResizablePortion step={3} />
+        </TabsContent>
+        <TabsContent value="report">
+          <ResizablePortion step={4} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
-function MissingFilesAndContinue() {
+function ResizablePortion({ step }: { step: number }) {
   return (
-    <div className="flex flex-col justify-between h-full">
-      <MissingFiles />
+    <StepContext.Provider value={step}>
+      <ResizablePanelGroup direction="vertical" className="rounded-lg border">
+        <ResizablePanel defaultSize={0}>
+          <ChatPanel />
+        </ResizablePanel>
 
-      <Continue />
-    </div>
+        <ResizableHandle withHandle />
+
+        <ResizablePanel defaultSize={100}>
+          <FileUpload />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </StepContext.Provider>
   );
 }

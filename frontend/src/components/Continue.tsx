@@ -30,8 +30,17 @@ export default function Continue() {
   };
 
   return (
-    <Button className="m-2" onClick={onClick} variant="default">
-      Continue
+    <Button
+      className="m-2 text-xl"
+      size="lg"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      variant="default"
+    >
+      Continue analysis
     </Button>
   );
 }
