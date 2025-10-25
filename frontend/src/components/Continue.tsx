@@ -20,7 +20,6 @@ export default function Continue() {
   const onClick = async () => {
     setLoadingDataAtom(true);
 
-    // await delay(25000);
     const [text, ok] = await apiReq(step, files);
 
     setLoadingDataAtom(false);

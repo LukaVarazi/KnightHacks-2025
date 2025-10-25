@@ -1,4 +1,9 @@
-import { IconPdf } from "@tabler/icons-react";
+import {
+  IconFileMusic,
+  IconFileMusicFilled,
+  IconMicrophone2,
+  IconPdf,
+} from "@tabler/icons-react";
 import { filesAtom } from "~/lib/atom";
 import {
   Dropzone,
@@ -106,6 +111,9 @@ function FileIcon({ file }: { file: File }) {
 
   if (extension === "pdf") {
     return <IconPdf size={32} className="text-destructive size-8" />;
+  }
+  if (extension === "m4a") {
+    return <IconFileMusicFilled size={32} className="text-green-300 size-8" />;
   }
 
   return null;

@@ -24,6 +24,7 @@ export default function ChatPanel() {
         {chatText && (
           <Message from="assistant">
             <MessageContent>test</MessageContent>
+            <MessageAvatar src="/logo.png" />
           </Message>
         )}
       </ConversationContent>
