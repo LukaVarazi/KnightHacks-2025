@@ -1,6 +1,6 @@
 # --------------------------------------------------------------------------------
-# File created using 'AnGitIgnored' extensions for Visual Studio Code: 
-# https://marketplace.visualstudio.com/items?itemName=AnAppWiLos.angitignored 
+# File created using 'AnGitIgnored' extensions for Visual Studio Code:
+# https://marketplace.visualstudio.com/items?itemName=AnAppWiLos.angitignored
 #-------------------------------------------------------------------------------
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,linux,flask,node,python,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,linux,flask,node,python,windows
@@ -28,7 +28,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -463,4 +462,3 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,linux,flask,node,python,windows
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
-

@@ -1,9 +1,17 @@
-import { Button } from "./components/ui/button";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/query";
+import { ThemeProvider } from "./components/ThemeProvider";
+import Main from "./components/Main";
 
 export default function App() {
   return (
-    <div className="flex bg-white gap-5 p-5 items-center justify-center">
-      <Button variant="outline">Hello world!</Button>
-    </div>
+    // Provide the client to your App
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <Main />
+      </ThemeProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 }
