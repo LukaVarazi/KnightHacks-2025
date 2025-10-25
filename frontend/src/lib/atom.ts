@@ -12,3 +12,4 @@ export const needsNewFileAtom = atom((get) => {
 export const stepAtom = atom(1);
 
 export const stepOutputsAtom = atom<string[]>(Array(4));
+export const loadingDataAtom = atom(false);

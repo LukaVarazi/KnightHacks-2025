@@ -1,7 +1,13 @@
 import { toast } from "sonner";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Button } from "./ui/button";
-import { filesAtom, stepAtom, stepOutputsAtom } from "~/lib/atom";
+import {
+  filesAtom,
+  loadingDataAtom,
+  stepAtom,
+  stepOutputsAtom,
+} from "~/lib/atom";
+import { delay } from "es-toolkit";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
@@ -9,9 +15,16 @@ export default function Continue() {
   const setStepOutputs = useSetAtom(stepOutputsAtom);
   const [step, setStep] = useAtom(stepAtom);
   const files = useAtomValue(filesAtom);
+  const setLoadingDataAtom = useSetAtom(loadingDataAtom);
 
   const onClick = async () => {
+    setLoadingDataAtom(true);
+
+    // await delay(25000);
     const [text, ok] = await apiReq(step, files);
+
+    setLoadingDataAtom(false);
+
     if (!ok) {
       toast.warning(
         "Missing files for analysis, read AI feedback and add needed files to continue!"
