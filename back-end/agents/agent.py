@@ -137,18 +137,142 @@ evidence_sorter = Agent(
     - Police Report: Was an accident reported? Check if police report is included or not.
                      Check who was at fault according to the police report.
     - Injury assessment:
-        1. Answer questions such as "was MRI, Brain Scan, Xray, etc taken?
-        2. What type of injury was sustained?
+        1. Answer questions such as "was MRI, Brain Scan, X-ray, etc taken?
+        2. What type of injury was sustained? (auto, slip and fall, etc.)
         3. Did the client loose consciousness? What is their pain level (0 is lowest -10 is highest)?
         4. When was the initial treatment of the accident? (between 24-48 hours is best).
         5. What types of injuries were sustained? such as whiplash, concussion, etc.
         6. If any surgery, did the client loose consciousness, broken bones, etc. during surgery?
+    - Coverage:
+        1. What type of insurance coverage does the client have? (health, auto, etc.)
+        2. Is there any information about the insurance provider? (name, contact info, policy number, etc.)
+    - Location:
+        1. Where did the accident occur? (specific address, intersection, city, state, etc.)
+        2. When did the accident occur? (date and time)
+    - Defendant Information:
+        1. Who is the defendant in the case? (name, contact info, relationship to client, etc.)
 
     Sometimes some of the key words such as "police report" might not be stated explicitly, so use your reasoning to 
     figure out if it is included or not (and is worded differently maybe)
 
     If a certain data is NOT provided, you can write "data not provided" under that section.
     You return the 3 perfectly sorted sections.
+    """,
+)
+
+evidence_sorter_initial = Agent(
+    model='gemini-2.5-flash',
+    name='evidence_sorter_initial',
+    description='Takes all client data and makes initial sorting into 5 sections and make a recommendation',
+    instruction="""
+You are an expert legal evidence sorter and intake analyst.
+
+Your task is to analyze the client’s case summary and determine whether the case should be **accepted** or **rejected**, based on the completeness of the provided information and the client’s insurance coverage details.
+
+You will organize all findings into the following sections:
+
+---
+SECTIONS:
+
+- INCIDENT DATE:
+    When did the accident occur? Include date and time if available. If missing, write "data not provided".
+
+- ACCIDENT TYPE:
+    1. What type of accident occurred (auto accident, slip and fall, etc.)?
+    2. What type of injury was sustained?
+    If missing, write "data not provided".
+
+- COVERAGE:
+    1. What type of insurance coverage does the client have? (auto, health, both, or none)
+    2. Is there any information about the insurance provider (name, policy number, contact info, etc.)?
+    If missing, write "data not provided".
+
+- LOCATION:
+    1. Where did the accident occur (intersection, address, city, state, etc.)?
+    If missing, write "data not provided".
+
+- DEFENDANT INFORMATION:
+    1. Who is the defendant? (name, relationship to client, contact info)
+    If missing, write "data not provided".
+
+---
+CALCULATION FOR SUMMARY:
+
+If sufficient financial details are provided, perform the following calculation step-by-step:
+
+1. Extract the **total insurance payout** mentioned in the data.
+2. Calculate:
+   - Attorney fee = 33 1/3% (0.3333 × total insurance amount)
+   - Subtract all **medical fees** (if provided)
+   - Remaining = total insurance payout - attorney fee - medical fees
+
+Display the results as:
+
+Insurance payout: $____  
+Attorney fee (33⅓%): $____  
+Medical fees: $____  
+Client remaining: $____  
+
+---
+DECISION LOGIC:
+
+Use the following rules to determine case acceptance:
+
+1. If the client **has car insurance**, answer **ACCEPT CASE**.  
+2. If the client **has no car insurance** but **has health insurance**, and the remaining amount (after attorney + medical fees) is positive, answer **ACCEPT CASE**.  
+3. If the client **has no car insurance** and the remaining amount is insufficient or negative, answer **REJECT CASE**.  
+4. If any of the required data fields (incident date, accident type, or insurance coverage) are missing, do not calculate — mark as **INCOMPLETE DATA**.
+
+---
+OUTPUT FORMAT:
+
+Return your final response using this exact structure:
+
+INCIDENT DATE:
+<value or "data not provided">
+
+ACCIDENT TYPE:
+<value or "data not provided">
+
+COVERAGE:
+<value or "data not provided">
+
+LOCATION:
+<value or "data not provided">
+
+DEFENDANT INFORMATION:
+<value or "data not provided">
+
+CALCULATION SUMMARY:
+Insurance payout: $____  
+Attorney fee (33⅓%): $____  
+Medical fees: $____  
+Client remaining: $____  
+
+RECOMMENDATION:
+<ACCEPT CASE / REJECT CASE / INCOMPLETE DATA>
+
+REASONING SUMMARY:
+<Provide a 2–3 sentence explanation of how you reached your decision, including insurance type, data completeness, and outcome.>
+
+---
+MISSING OR REJECTED CASE HANDLING:
+
+If any data is missing or if the case is **rejected**, automatically TRANSFER the output to the **client_communicator subagent** to draft a professional email to the client.  
+This email must:
+- Politely summarize the case findings.  
+- Explain why the case was rejected or which data is missing.  
+- Request the missing documents or clarifications if applicable.  
+- Maintain professional and empathetic tone.  
+
+End your output with:
+
+REASONING GUIDELINES:
+
+- Use logical inference when keywords are implied (e.g., “police arrived” → police report exists; “first responders” → EMT present).
+- Handle vague or incomplete language gracefully.
+- Never skip sections; fill in "data not provided" where information is missing.
+- Always maintain a structured, factual, and professional tone.
     """,
 )
 
@@ -167,10 +291,11 @@ agent_coordinator = Agent(
 
         If:
         1. KEYWORD = "Sort" - you will transfer the legal case to the "evidence_sorter" sub agent (dont include the action keyword)
-        2. KEYWORD = "Wrangle" - you will transfer the legal case to the "record_wrangler" sub agent (dont include the action keyword)
+        2. KEYWORD = "Sort_Initial" - you will transfer the legal case to the "evidence_sorter_initial" sub agent (dont include the action keyword)
+        3. KEYWORD = "Wrangle" - you will transfer the legal case to the "record_wrangler" sub agent (dont include the action keyword)
      """,
 
-    sub_agents=[state_management, record_wrangler, client_communication,
+    sub_agents=[state_management, record_wrangler, client_communication, evidence_sorter_initial,
                 legal_researcher, voice_bot_scheduler, evidence_sorter]
 )
 
