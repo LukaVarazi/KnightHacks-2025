@@ -1,21 +1,21 @@
 import requests
 import os
 import json
-import time 
+import time # Added for wait time in case of connection issues
 
 # --- Prerequisites ---
 # 1. Ensure your Flask app (app.py) is running in a separate terminal via 'python app.py'.
-# 2. Ensure you have the requests and pypdf libraries installed: pip install requests pypdf
+# 2. Ensure you have the requests library installed: pip install requests
 # 3. Create a small PDF file named 'test_document.pdf' in the same directory for testing.
 
 def test_pdf_upload():
     """
     Tests the PDF upload endpoint (/upload_pdf) of the Flask application,
-    which now uses a hybrid approach (pypdf + Gemini OCR/Image Analysis fallback).
+    which now calls the Gemini API for summarization.
     """
     # The URL matches the running Flask server and the POST route
     url = 'http://127.0.0.1:5000/upload_pdf'
-    pdf_filename = 'testt.pdf'
+    pdf_filename = 'pdftest.pdf'
 
     print(f"Attempting to connect to: {url}")
     
@@ -66,13 +66,11 @@ def test_pdf_upload():
         return
     
     print("-" * 60)
-    # 4. Validate the response structure for the new Hybrid API
-    if response.status_code == 200 and data.get('status') == 'success' and 'extracted_text' in data:
-        source = data.get('extraction_source', 'Unknown')
-        # Updated success message to reflect the new multimodal capability
-        print(f"SUCCESS: Hybrid document analysis complete (Text + Image Analysis)! Source: {source}")
-        print(f"Character Count: {data.get('character_count')} characters.")
-        print(f"Text Preview: {data.get('extracted_text')[:100]}...")
+    # 4. Validate the response structure for the new Gemini-based API
+    if response.status_code == 200 and data.get('status') == 'success' and 'summary' in data:
+        print(f"SUCCESS: The PDF upload and Gemini summarization worked!")
+        print(f"Summary Length: {data.get('summary_length')} words.")
+        print(f"Summary Preview: {data.get('summary')[:100]}...")
     else:
         print("FAILURE: The API returned an error or the expected JSON structure was missing.")
         if 'error' in data:
