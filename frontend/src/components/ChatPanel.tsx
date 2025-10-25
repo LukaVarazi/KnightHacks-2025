@@ -8,17 +8,24 @@ import {
   MessageAvatar,
   MessageContent,
 } from "#/ui/shadcn-io/ai/message";
+import { useAtomValue } from "jotai";
+import { useContext } from "react";
+import { stepOutputsAtom } from "~/lib/atom";
+import StepContext from "~/lib/context";
 
 export default function ChatPanel() {
-  // const chatText = ;
+  const step = useContext(StepContext);
+  const stepOutputs = useAtomValue(stepOutputsAtom);
+  const chatText = stepOutputs[step];
 
   return (
     <Conversation className="relative w-full h-full">
       <ConversationContent>
-        <Message from="assistant">
-          {/* <MessageAvatar /> */}
-          <MessageContent>Hi there!</MessageContent>
-        </Message>
+        {chatText && (
+          <Message from="assistant">
+            <MessageContent>test</MessageContent>
+          </Message>
+        )}
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>
