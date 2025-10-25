@@ -1,83 +1,140 @@
-import requests
+import io
 import os
 import json
-import time 
+import base64
+import requests
+import time
+from flask import Flask, request, jsonify
+from pypdf import PdfReader # Used for fast, accurate native text extraction
 
-# --- Prerequisites ---
-# 1. Ensure your Flask app (app.py) is running in a separate terminal via 'python app.py'.
-# 2. Ensure you have the requests and pypdf libraries installed: pip install requests pypdf
-# 3. Create a small PDF file named 'test_document.pdf' in the same directory for testing.
+# --- Configuration ---
+# !!! IMPORTANT: You MUST set your actual Gemini API Key here or use environment variables !!!
+GEMINI_API_KEY = "AIzaSyDLMUtIu-Bg0qykFwX-6p3-ST5JuWOOEm4" 
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
+# If native text is less than this threshold, we assume it's a scanned/image-based PDF and use Gemini.
+NATIVE_TEXT_THRESHOLD = 50 
 
-def test_pdf_upload():
-    """
-    Tests the PDF upload endpoint (/upload_pdf) of the Flask application,
-    which now uses a hybrid approach (pypdf + Gemini OCR/Image Analysis fallback).
-    """
-    # The URL matches the running Flask server and the POST route
-    url = 'http://127.0.0.1:5000/upload_pdf'
-    pdf_filename = 'testt.pdf'
+app = Flask(__name__)
+# Global variable for a basic server status check and storing the final parsed string
+extracted_text_store = "No documents analyzed yet."
 
-    print(f"Attempting to connect to: {url}")
+# Function to handle API requests with exponential backoff
+def call_gemini_api(payload, max_retries=5):
+    """Handles API request and implements exponential backoff for reliability."""
+    for attempt in range(max_retries):
+        try:
+            headers = {'Content-Type': 'application/json'}
+            # API Key is appended to the URL as a query parameter
+            response = requests.post(f"{GEMINI_API_URL}?key={GEMINI_API_KEY}", 
+                                     headers=headers, 
+                                     data=json.dumps(payload),
+                                     timeout=120) # Added timeout
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            # Retry on rate limiting (429) or common server errors (5xx)
+            if response.status_code in [429, 500, 503] and attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                time.sleep(wait_time)
+            else:
+                raise e
+    return None
+
+@app.route('/', methods=['GET'])
+def index():
+    """Serves a basic API status message."""
+    return jsonify({
+        "status": "API is operational (Hybrid PDF/Image Analyzer)",
+        "message": "Send a POST request to /upload_pdf with a file named 'pdf_file' to begin analysis.",
+        "last_text_preview": extracted_text_store[:80] + "..." if len(extracted_text_store) > 80 else extracted_text_store
+    }), 200
+
+@app.route('/upload_pdf', methods=['POST'])
+def upload_pdf():
+    global extracted_text_store
+
+    if 'pdf_file' not in request.files:
+        return jsonify({"error": "Missing file: Expecting a file named 'pdf_file' in the form data."}), 400
     
-    # 1. Check if the test file exists
-    if not os.path.exists(pdf_filename):
-        print("-" * 60)
-        print(f"ERROR: Test file '{pdf_filename}' not found.")
-        print("ACTION: Please create a small PDF file with some text and name it 'test_document.pdf' in this folder.")
-        print("-" * 60)
-        return
+    file = request.files['pdf_file']
+    
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({"error": "Invalid file type. Please upload a PDF."}), 400
 
-    # 2. Define the files payload and send request
+    file_bytes = file.read()
+    native_text = ""
+    source = "Unknown"
+
+    # --- Step 1: Attempt Native Text Extraction (Accuracy Priority) ---
     try:
-        with open(pdf_filename, 'rb') as f:
-            # The dictionary key must match the expected input name in app.py ('pdf_file')
-            files = {'pdf_file': (pdf_filename, f, 'application/pdf')}
-            
-            # Make the POST request
-            print("Sending request to Flask server...")
-            start_time = time.time()
-            response = requests.post(url, files=files)
-            end_time = time.time()
-
-        # 3. Process the response
-        print("-" * 60)
-        print(f"Request Status Code: {response.status_code}")
-        print(f"Response Time: {end_time - start_time:.2f} seconds")
+        pdf_reader = PdfReader(io.BytesIO(file_bytes))
+        for page in pdf_reader.pages:
+            native_text += page.extract_text() or ""
+        # Clean up excessive whitespace/newlines
+        native_text = ' '.join(native_text.split())
+    except Exception:
+        # If pypdf fails (e.g., corrupted file), we ignore the error and proceed to Gemini fallback
+        pass
+    
+    # --- Step 2: Hybrid Check and Fallback to Gemini (OCR/Image Analysis) ---
+    if len(native_text) > NATIVE_TEXT_THRESHOLD:
+        # Success: Native text is sufficient (Text-only PDF)
+        extracted_content = native_text
+        source = "Native Extraction (pypdf)"
+    else:
+        # Fallback: Text is image-based or sparse, use Gemini for OCR and visual description
+        if not GEMINI_API_KEY:
+            return jsonify({"error": "Gemini API Key is not configured for OCR/Image Analysis fallback."}), 500
         
         try:
-            # Attempt to parse the JSON response
-            data = response.json()
-            print("Response JSON:")
-            print(json.dumps(data, indent=4))
-        except requests.exceptions.JSONDecodeError:
-            # Handle cases where the server returns an unexpected non-JSON response
-            print("Response content is not valid JSON (check server logs for errors):")
-            print(response.text)
-            data = {} # Ensure 'data' is defined for the check below
+            # Encode PDF bytes to base64 for API transmission
+            encoded_pdf = base64.b64encode(file_bytes).decode('utf-8')
 
-    except requests.exceptions.ConnectionError:
-        print("-" * 60)
-        print("CRITICAL ERROR: Could not connect to the Flask server.")
-        print("ACTION: Please ensure 'app.py' is running via 'python app.py' in a separate terminal.")
-        print("-" * 60)
-        return
-    except Exception as e:
-        print(f"An unexpected error occurred during the test: {e}")
-        return
+            # CRITICAL: Prompt for combined text extraction AND detailed image description
+            system_prompt = (
+                "You are an expert document analyst specializing in accident reports. "
+                "Extract all text content from the document, including any text visible within images (OCR). "
+                "Crucially, for any embedded images depicting car crashes, provide a detailed, objective description "
+                "of the visible damage, position of vehicles, and environment. Combine the extracted text and "
+                "image descriptions into a single, cohesive narrative. Do not include any introductory or concluding remarks."
+            )
+            
+            payload = {
+                # Place system instruction here for better control
+                "systemInstruction": {"parts": [{"text": system_prompt}]},
+                "contents": [
+                    {"parts": [
+                        {"inlineData": {"mimeType": "application/pdf", "data": encoded_pdf}},
+                        {"text": "Analyze the document and provide the combined narrative as requested."}
+                    ]}
+                ]
+            }
+            
+            gemini_response = call_gemini_api(payload)
+            generated_text = gemini_response.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+            
+            if not generated_text:
+                raise Exception("Gemini returned an empty text response.")
+
+            extracted_content = generated_text
+            source = "Gemini OCR/Image Analysis Fallback"
+            
+        except Exception as e:
+            app.logger.error(f"Error during Gemini fallback: {e}")
+            return jsonify({"error": f"Failed to perform Gemini OCR/Image Analysis: {str(e)}"}), 500
+
+    # --- Step 3: Return Response ---
+    # Store the final parsed string globally
+    extracted_text_store = extracted_content
     
-    print("-" * 60)
-    # 4. Validate the response structure for the new Hybrid API
-    if response.status_code == 200 and data.get('status') == 'success' and 'extracted_text' in data:
-        source = data.get('extraction_source', 'Unknown')
-        # Updated success message to reflect the new multimodal capability
-        print(f"SUCCESS: Hybrid document analysis complete (Text + Image Analysis)! Source: {source}")
-        print(f"Character Count: {data.get('character_count')} characters.")
-        print(f"Text Preview: {data.get('extracted_text')[:100]}...")
-    else:
-        print("FAILURE: The API returned an error or the expected JSON structure was missing.")
-        if 'error' in data:
-             print(f"Server Error Message: {data['error']}")
-
+    return jsonify({
+        "status": "success",
+        "extraction_source": source,
+        "message": f"Text and image analysis completed successfully via {source}.",
+        "extracted_content_string": extracted_content, # The final string containing text and image descriptions
+        "character_count": len(extracted_content),
+    }), 200
 
 if __name__ == '__main__':
-    test_pdf_upload()
+    # Flask must be run in a separate, dedicated terminal
+    app.run(host='127.0.0.1', port=5000, debug=True)
