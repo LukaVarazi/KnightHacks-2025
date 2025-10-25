@@ -259,7 +259,7 @@ Medical fees: $____
 Client remaining: $____  
 
 RECOMMENDATION:
-<ACCEPT CASE / REJECT CASE / INCOMPLETE DATA>
+<ACCEPT CASE / REJECT CASE / INSUFFICIENT DATA>
 
 REASONING SUMMARY:
 <Provide detail sentence explanation of how you reached your decision from the reasoning guidelines provided, including insurance type, data completeness, and outcome.>
