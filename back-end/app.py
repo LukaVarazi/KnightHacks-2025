@@ -3,6 +3,7 @@ import requests
 import os
 import json
 import time 
+import re
 
 # --- Prerequisites ---
 # 1. Ensure your Flask app (app.py) is running in a separate terminal via 'python app.py'.
@@ -138,18 +139,31 @@ def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSIO
     else:
         return f"Error {response.status_code}: {response.text}"
 
+def find_recommendation(text):
+    # Map the full phrases to your desired output
+    mapping = {
+        "ACCEPT DATA": "ACCEPT",
+        "REJECT DATA": "REJECT",
+        "INCOMPLETE DATA": "INSUFFICIENT DATA"
+    }
+
+    # Regex to find the recommendation
+    pattern = r'RECOMMENDATION:\s*(ACCEPT DATA|REJECT DATA|INSUFFICIENT DATA)'
+    match = re.search(pattern, text)
+    
+    if match:
+        return mapping[match.group(1)]
+    return None  # No recommendation found
 
 #======================
 # AGENT PIPELINE
 #======================
-parsedText = """
-Uh, yeah, this was on I-95 near the exit to Coconut Creek. The other driver hit my side door and then took off. My shoulder slammed into the window, and it’s been sore ever since. The car had to be towed — we’ve got photos of that.
-
-A state trooper came later and took some info; he gave me a small slip with a number, but I haven’t received any full report yet.
-
-I went to Broward UrgentCare the next day because it hurt to move my arm. The doctor said it’s probably just inflammation, prescribed ibuprofen, and said to rest it for a week. Didn’t do any scans since it didn’t look like a break.
-
-Files uploaded: “TowSlip.jpg”, “CarPhotos.zip”, “UrgentCare_Broward.pdf”.
+initialParse = """
+The client was involved in a rear-end car accident on August 12, 2024, at 3:45 PM near NW 36th Street and LeJeune Road in Miami, FL. 
+He was taken by ambulance to Jackson Memorial Hospital. The police report indicates the other driver was at fault. 
+Total insurance payout from his car policy (Geico) is $50,000, and medical bills amount to $10,000. 
+Injuries include whiplash and shoulder strain confirmed by MRI. He was treated within 24 hours. 
+Defendant: John Doe, 305-555-8822, driver of vehicle B.
 """
 
 
@@ -158,16 +172,26 @@ Files uploaded: “TowSlip.jpg”, “CarPhotos.zip”, “UrgentCare_Broward.pd
 # RUN AGENT
 #======================
 if __name__ == "__main__":
-    parsedText = test_pdf_upload()
+    #initialParse = test_pdf_upload()
 
-    parsedText += "\n\nAction: Sort"
+    #======================
+    # AGENT PIPELINE
+    #======================
 
+    # STEP 1: Check and Sort Data
+    parsedText = initialParse + "\n\nAction: Sort_Initial"
     result = callAgent(parsedText)
-    print("Agent Output:\n")
+    recommendation = find_recommendation(result)
+
+    if recommendation == "ACCEPT":
+        # STEP 2: Ensure No Files are Missing
+        parsedText = initialParse + "\n\nAction: Sort"
+        result = callAgent(parsedText)
+    else:
+        parsedText = initialParse + "\n\nAction: Email"
+        result = callAgent(parsedText)
+
     print(result)
-
-
-
 
 
 

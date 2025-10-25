@@ -275,8 +275,6 @@ This email must:
 - Request the missing documents or clarifications if applicable.  
 - Maintain professional and empathetic tone.  
 
-"Action: Email" to transfer the email drafting task to the 'client_communication' agent with the email summary above to draft the email.
-
 If case is **rejected**, automatically generate a professional email to the client.  
 This email must:
 - Politely summarize the case findings from the output format.  
@@ -286,7 +284,6 @@ This email must:
 - Request the missing documents or clarifications if applicable.  
 - Maintain professional and empathetic tone.  
 
-"Action: Email" to transfer the email drafting task to the 'client_communication' agent with the email summary above to draft the email.
 
 If case is accepted, automatically generate a professional email to the client.  
 This email must:
@@ -295,7 +292,6 @@ This email must:
 - Include the client information if available.
 - Maintain professional and empathetic tone.  
 
-"Action: Email" to transfer the email drafting task to the 'client_communication' agent with the email summary above to draft the email.
     """,
 )
 
