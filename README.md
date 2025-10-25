@@ -41,3 +41,9 @@ adk web
 ```
 and click the localhost link to talk to agent
 
+# How to run the program 
+in the directory of the program, cd into the backend folder that hosts the agents and then run
+```bash
+adk web 
+```
+then the program should respond

@@ -133,11 +133,16 @@ evidence_sorter = Agent(
     You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
 
     SECTIONS:
-    - EMT Presence: will answer questions such as "was EMT involved?"
-    - Police Report: Check if police report is included or not
-    - Injury assessment: 
+    - EMT Presence: How did the client arrive at the hospital? By ambulance or personal vehicle? Was EMT present at the scene?
+    - Police Report: Was an accident reported? Check if police report is included or not.
+                     Check who was at fault according to the police report.
+    - Injury assessment:
         1. Answer questions such as "was MRI, Brain Scan, Xray, etc taken?
-        2. What was the timeframe of the accident? it's best if it was between 24-48 hours.
+        2. What type of injury was sustained?
+        3. Did the client loose consciousness? What is their pain level (0 is lowest -10 is highest)?
+        4. When was the initial treatment of the accident? (between 24-48 hours is best).
+        5. What types of injuries were sustained? such as whiplash, concussion, etc.
+        6. If any surgery, did the client loose consciousness, broken bones, etc. during surgery?
 
     Sometimes some of the key words such as "police report" might not be stated explicitly, so use your reasoning to 
     figure out if it is included or not (and is worded differently maybe)
