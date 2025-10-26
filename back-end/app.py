@@ -1,91 +1,148 @@
 import requests
-import requests
 import os
 import json
 import time 
 import re
+import io
+import base64
+from threading import Thread # Required for running Flask in background (optional, but good practice)
+from flask import Flask, request, jsonify
+from pypdf import PdfReader 
 
-# --- Prerequisites ---
-# 1. Ensure your Flask app (app.py) is running in a separate terminal via 'python app.py'.
-# 2. Ensure you have the requests and pypdf libraries installed: pip install requests pypdf
-# 3. Create a small PDF file named 'test_document.pdf' in the same directory for testing.
+# --- Configuration ---
+GEMINI_API_KEY = "AIzaSyDLMUtIu-Bg0qykFwX-6p3-ST5JuWOOEm4" 
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
+NATIVE_TEXT_THRESHOLD = 50 
 
-def test_pdf_upload():
-    """
-    Tests the PDF upload endpoint (/upload_pdf) of the Flask application,
-    which now uses a hybrid approach (pypdf + Gemini OCR/Image Analysis fallback).
-    """
-    # The URL matches the running Flask server and the POST route
-    url = 'http://127.0.0.1:5000/upload_pdf'
-    pdf_filename = 'testt.pdf'
+app = Flask(__name__)
+extracted_text_store = "No documents analyzed yet."
 
-    print(f"Attempting to connect to: {url}")
-    
-    # 1. Check if the test file exists
-    if not os.path.exists(pdf_filename):
-        print("-" * 60)
-        print(f"ERROR: Test file '{pdf_filename}' not found.")
-        print("ACTION: Please create a small PDF file with some text and name it 'test_document.pdf' in this folder.")
-        print("-" * 60)
-        return
-
-    # 2. Define the files payload and send request
-    try:
-        with open(pdf_filename, 'rb') as f:
-            # The dictionary key must match the expected input name in app.py ('pdf_file')
-            files = {'pdf_file': (pdf_filename, f, 'application/pdf')}
-            
-            # Make the POST request
-            print("Sending request to Flask server...")
-            start_time = time.time()
-            response = requests.post(url, files=files)
-            end_time = time.time()
-
-        # 3. Process the response
-        print("-" * 60)
-        print(f"Request Status Code: {response.status_code}")
-        print(f"Response Time: {end_time - start_time:.2f} seconds")
-        
+# Function to handle API requests with exponential backoff
+def call_gemini_api(payload, max_retries=5):
+    """Handles API request and implements exponential backoff for reliability."""
+    for attempt in range(max_retries):
         try:
-            # Attempt to parse the JSON response
-            data = response.json()
-            print("Response JSON:")
-            print(json.dumps(data, indent=4))
-        except requests.exceptions.JSONDecodeError:
-            # Handle cases where the server returns an unexpected non-JSON response
-            print("Response content is not valid JSON (check server logs for errors):")
-            print(response.text)
-            data = {} # Ensure 'data' is defined for the check below
+            headers = {'Content-Type': 'application/json'}
+            response = requests.post(f"{GEMINI_API_URL}?key={GEMINI_API_KEY}", 
+                                     headers=headers, 
+                                     data=json.dumps(payload),
+                                     timeout=120)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            if response.status_code in [429, 500, 503] and attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                time.sleep(wait_time)
+            else:
+                raise e
+    return None
 
-    except requests.exceptions.ConnectionError:
-        print("-" * 60)
-        print("CRITICAL ERROR: Could not connect to the Flask server.")
-        print("ACTION: Please ensure 'app.py' is running via 'python app.py' in a separate terminal.")
-        print("-" * 60)
-        return
+# --- Core Parsing Logic Extracted into a Function ---
+def parse_pdf_bytes(file_bytes):
+    """
+    Core logic to parse PDF bytes, falling back to Gemini for OCR.
+    Returns the extracted string or raises an exception on failure.
+    """
+    native_text = ""
+    source = "Unknown"
+
+    # 1. Attempt Native Text Extraction
+    try:
+        pdf_reader = PdfReader(io.BytesIO(file_bytes))
+        for page in pdf_reader.pages:
+            native_text += page.extract_text() or ""
+        native_text = ' '.join(native_text.split())
     except Exception as e:
-        print(f"An unexpected error occurred during the test: {e}")
-        return
+        app.logger.warning(f"pypdf native extraction failed: {e}")
+        pass
     
-    print("-" * 60)
-    # 4. Validate the response structure for the new Hybrid API
-    if response.status_code == 200 and data.get('status') == 'success' and 'extracted_text' in data:
-        source = data.get('extraction_source', 'Unknown')
-        # Updated success message to reflect the new multimodal capability
-        print(f"SUCCESS: Hybrid document analysis complete (Text + Image Analysis)! Source: {source}")
-        print(f"Character Count: {data.get('character_count')} characters.")
-        print(f"Text Preview: {data.get('extracted_text')[:100]}...")
+    # 2. Hybrid Check and Fallback to Gemini
+    if len(native_text) > NATIVE_TEXT_THRESHOLD:
+        extracted_content = native_text
+        source = "Native Extraction (pypdf)"
     else:
-        print("FAILURE: The API returned an error or the expected JSON structure was missing.")
-        if 'error' in data:
-             print(f"Server Error Message: {data['error']}")
+        if not GEMINI_API_KEY:
+            raise ValueError("Gemini API Key is not configured for OCR/Image Analysis fallback.")
+        
+        # Use Gemini for OCR/Image Analysis
+        encoded_pdf = base64.b64encode(file_bytes).decode('utf-8')
+
+        system_prompt = (
+            "You are an expert document analyst specializing in accident reports. "
+            "Extract all text content from the document, including any text visible within images (OCR). "
+            "Crucially, for any embedded images depicting car crashes, provide a detailed, objective description "
+            "of the visible damage, position of vehicles, and environment. Combine the extracted text and "
+            "image descriptions into a single, cohesive narrative. Do not include any introductory or concluding remarks."
+        )
+        
+        payload = {
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": [
+                {"parts": [
+                    {"inlineData": {"mimeType": "application/pdf", "data": encoded_pdf}},
+                    {"text": "Analyze the document and provide the combined narrative as requested."}
+                ]}
+            ]
+        }
+        
+        gemini_response = call_gemini_api(payload)
+        generated_text = gemini_response.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+        
+        if not generated_text:
+            raise Exception("Gemini returned an empty text response.")
+
+        extracted_content = generated_text
+        source = "Gemini OCR/Image Analysis Fallback"
+
+    print(f"Extraction Source: {source}")
+    return extracted_content
+
+# --- Flask Endpoints (Mostly Unchanged) ---
+@app.route('/', methods=['GET'])
+def index():
+    """Serves a basic API status message."""
+    return jsonify({
+        "status": "API is operational (Hybrid PDF/Image Analyzer)",
+        "message": "Send a POST request to /upload_pdf with a file named 'pdf_file' to begin analysis.",
+        "last_text_preview": extracted_text_store[:80] + "..." if len(extracted_text_store) > 80 else extracted_text_store
+    }), 200
+
+@app.route('/upload_pdf', methods=['POST'])
+def upload_pdf():
+    global extracted_text_store
+
+    if 'pdf_file' not in request.files:
+        return jsonify({"error": "Missing file: Expecting a file named 'pdf_file' in the form data."}), 400
+    
+    file = request.files['pdf_file']
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({"error": "Invalid file type. Please upload a PDF."}), 400
+
+    file_bytes = file.read()
+    
+    try:
+        extracted_content = parse_pdf_bytes(file_bytes)
+        source = "Gemini/pypdf" # Simplified source for the API response after refactoring
+    except Exception as e:
+        app.logger.error(f"Error during PDF processing: {e}")
+        return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 500
+
+    # Store the final parsed string globally
+    extracted_text_store = extracted_content
+    
+    return jsonify({
+        "status": "success",
+        "extraction_source": source,
+        "message": f"Text and image analysis completed successfully via {source}.",
+        "extracted_content_string": extracted_content, 
+        "character_count": len(extracted_content),
+    }), 200
 
 
 
-
-
-
-
+#======================================================
+# LUKA CODE BEYOND THIS POINT - DO NOT TOUCH KURWA!
+#======================================================
 API_URL = "http://127.0.0.1:8000"
 APP_NAME = "agents"
 USER_ID = "user1"
@@ -111,7 +168,6 @@ def ensure_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
 
 def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
     """Send prompt to ADK agent and return final string"""
-    # Ensure session exists
     ensure_session(app_name, user_id, session_id)
 
     payload = {
@@ -128,7 +184,6 @@ def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSIO
 
     if response.status_code == 200:
         data = response.json()
-        # ADK returns a list of events; last event usually has the final text
         for event in reversed(data):
             content = event.get("content", {})
             parts = content.get("parts", [])
@@ -140,69 +195,77 @@ def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSIO
         return f"Error {response.status_code}: {response.text}"
 
 def find_recommendation(text):
-    # Map the full phrases to your desired output
+    """Finds and maps the specific recommendation phrase from the agent's text."""
     mapping = {
         "ACCEPT DATA": "ACCEPT",
         "REJECT DATA": "REJECT",
         "INCOMPLETE DATA": "INSUFFICIENT DATA"
     }
 
-    # Regex to find the recommendation
-    pattern = r'RECOMMENDATION:\s*(ACCEPT DATA|REJECT DATA|INSUFFICIENT DATA)'
+    pattern = r'RECOMMENDATION:\s*(ACCEPT DATA|REJECT DATA|INCOMPLETE DATA)'
     match = re.search(pattern, text)
     
     if match:
-        return mapping[match.group(1)]
-    return None  # No recommendation found
-
-#======================
-# AGENT PIPELINE
-#======================
-initialParse = """
-The client was involved in a rear-end car accident on August 12, 2024, at 3:45 PM near NW 36th Street and LeJeune Road in Miami, FL. 
-He was taken by ambulance to Jackson Memorial Hospital. The police report indicates the other driver was at fault. 
-Total insurance payout from his car policy (Geico) is $50,000, and medical bills amount to $10,000. 
-Injuries include whiplash and shoulder strain confirmed by MRI. He was treated within 24 hours. 
-Defendant: John Doe, 305-555-8822, driver of vehicle B.
-"""
-
-
+        return mapping.get(match.group(1), None) 
+    return None 
 
 #======================
 # RUN AGENT
 #======================
 if __name__ == "__main__":
-    #initialParse = test_pdf_upload()
+    # NOTE: You MUST have a file named 'test_document.pdf' in the same directory
+    # for this test to succeed.
+    TEST_FILE_PATH = "testt.pdf"
+    
+    # We will run the parsing logic directly to get the required string.
+    try:
+        with open(TEST_FILE_PATH, 'rb') as f:
+            pdf_bytes = f.read()
+        
+        print(f"--- Attempting to Parse PDF: {TEST_FILE_PATH} ---")
+        initialParse = parse_pdf_bytes(pdf_bytes)
+        
+        print("\n--- Parsed Text Preview ---")
+        print(initialParse[:200] + "..." if len(initialParse) > 200 else initialParse)
 
+    except FileNotFoundError:
+        print(f"🚨 ERROR: Test file '{TEST_FILE_PATH}' not found.")
+        print("Please create a PDF file with that name to run the agent pipeline.")
+        exit()
+    except Exception as e:
+        print(f"🚨 ERROR during PDF parsing: {e}")
+        exit()
+    
     #======================
     # AGENT PIPELINE
     #======================
 
+    print("\n--- Starting Agent Pipeline ---")
+
     # STEP 1: Check and Sort Data
     parsedText = initialParse + "\n\nAction: Sort_Initial"
+    print(f"\nCalling Agent with Action: Sort_Initial...")
     result = callAgent(parsedText)
-    recommendation = find_recommendation(result)
-
-    if recommendation == "ACCEPT":
-        # STEP 2: Ensure No Files are Missing
-        parsedText = initialParse + "\n\nAction: Sort"
-        result = callAgent(parsedText)
-    else:
-        parsedText = initialParse + "\n\nAction: Email"
-        result = callAgent(parsedText)
-
+    print("--- Agent Response (Sort_Initial) ---")
     print(result)
 
+    recommendation = find_recommendation(result)
+    print(f"\nExtracted Recommendation: {recommendation}")
 
+    final_result = ""
+    if recommendation == "ACCEPT":
+        # STEP 2: Ensure No Files are Missing
+        print("\nRunning ACCEPT path...")
+        parsedText = initialParse + "\n\nAction: Sort"
+        final_result = callAgent(parsedText)
+    else:
+        print("\nRunning REJECT/INSUFFICIENT path...")
+        parsedText = initialParse + "\n\nAction: Email"
+        final_result = callAgent(parsedText)
 
+    print("\n--- Final Agent Response (Step 2 Action) ---")
+    print(final_result)
+    print("\n--- Pipeline Complete ---")
 
-
-
-
-
-
-
-
-
-
-
+    # Optional: Run Flask server in a separate thread if needed for API testing later
+    # Thread(target=lambda: app.run(host='127.0.0.1', port=5000)).start()
