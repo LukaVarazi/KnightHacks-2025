@@ -41,7 +41,7 @@ export default function ChatPanel() {
             <MessageContent className="max-h-[70vh] overflow-y-auto">
               <Response>{chatText}</Response>
             </MessageContent>
-            <MessageAvatar src="/logo.png" />
+            <MessageAvatar src="/logo2.png" />
           </Message>
         )}
       </ConversationContent>
