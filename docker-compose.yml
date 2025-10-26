@@ -1,0 +1,29 @@
+services:
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    ports:
+      - "9998:80"
+    restart: always
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+
+  backend:
+    build:
+      context: back-end
+      dockerfile: Dockerfile
+    ports:
+      - "9999:80"
+    restart: always
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+
+  agent:
+    build:
+      context: back-end
+      dockerfile: Dockerfile
+    restart: always
+    command: ["python", "-m", "adk", "api_server"]
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}

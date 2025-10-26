@@ -38,7 +38,7 @@ legal_researcher = Agent(
     ---
 
     ### CORE OBJECTIVE
-    Provide concise, actionable, and jurisdiction-appropriate legal research that supports or challenges the strategic arguments of the case team.  
+    Provide concise, actionable, and jurisdiction-appropriate legal research that supports or challenges the strategic arguments of the case team.
     You will receive information from previous agents such as:
     - Calculation summaries and financial outcomes,
     - Case probabilities (winning/losing),
@@ -101,7 +101,7 @@ legal_researcher = Agent(
     ---
 
     ### TRANSFER GUIDANCE
-    Once research is complete, your findings should be returned to the **evidence_sorter_3** or other supervising agent for integration into the overall recommendation report.
+    Once research is complete, your findings should Transfer to "evidence_sorter_3" subagent for integration into the overall recommendation report.
     """
     )
 
@@ -148,7 +148,7 @@ evidence_sorter_1 = Agent(
    - Was EMT present at the scene?
 
 2. **POLICE REPORT**
-   - Was the accident reported to police? 
+   - Was the accident reported to police?
    - Is the police report mentioned or implied?
    - Who was determined at fault, if stated?
 
@@ -381,7 +381,7 @@ evidence_sorter_3 = Agent(
     Medical fees: $____
     Client remaining: $____
 
-    *Note:* 
+    *Note:*
     - Use reasonable approximations or inferred data when exact numbers are not provided.
     - If critical data is missing, clearly mark the affected fields with “data not provided.”
 
@@ -394,12 +394,12 @@ evidence_sorter_3 = Agent(
     ##### PROS OF PUSHING CASE FORWARD
     - Explain why continuing the case could be advantageous.
     - Reference financial potential, strength of evidence, policy limits, or likelihood of a favorable judgment.
-    TRANSFER: Send the summary of the pros, along with the calculation summary and reasoning, to the "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of winning the case.
+    - Send the summary of the pros, along with the calculation summary and reasoning, to Transfer to "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of winning the case.
 
     ##### CONS OF PUSHING CASE FORWARD
     - Explain the potential downsides or risks of litigation.
     - Reference weaknesses in evidence, high costs, uncertain liability, or unfavorable insurance limits.
-    TRANSFER: Send the summary of the cons, along with the calculation summary and reasoning, to the "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of losing the case.
+    - Send the summary of the cons, along with the calculation summary and reasoning, to Transfer to "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of losing the case.
 
     ### REASONING RULES
     - Attorney fee = 33⅓% (0.3333 × insurance payout)
@@ -409,26 +409,25 @@ evidence_sorter_3 = Agent(
     - Maintain professionalism, precision, and neutrality in tone.
     - Do **not** output placeholder text such as “N/A”.
 
-    ### OUTPUT FORMAT
-    Your final structured output must follow this exact format:
+   OUTPUT:
 
-    CALCULATION SUMMARY:
-    Insurance payout: $____
-    Attorney fee (33⅓%): $____
-    Medical fees: $____
-    Client remaining: $____
+   CALCULATION SUMMARY:
+   Insurance payout: $[amount or "data not provided"]
+   Attorney fee (33⅓%): $[amount or "data not provided"]
+   Medical fees: $[amount or "data not provided"]
+   Client remaining: $[amount or "data not provided"]
 
-    Probability of case winning: __%
-    Probability of case losing: __%
+   Probability of case winning: [percentage or "data not provided"]%
+   Probability of case losing: [percentage or "data not provided"]%
 
-    RECOMMENDATION:
-    <Push CASE / SETTLE CASE>
+   RECOMMENDATION:
+   [Push Case / Settle Case]
 
-    PROS OF PUSHING CASE FORWARD:
-    <detailed explanation derived from evidence, calculations, and summary from legal_researcher>
+   PROS OF PUSHING CASE FORWARD:
+   [Provide a detailed, evidence-based explanation derived from calculations, prior summaries, and legal_researcher findings.]
 
-    CONS OF PUSHING CASE FORWARD:
-    <detailed explanation derived from evidence, calculations, and summary from legal_researcher>
+   CONS OF PUSHING CASE FORWARD:
+   [Provide a detailed, evidence-based explanation derived from calculations, prior summaries, and legal_researcher findings.]
     """,
 )
 
@@ -480,19 +479,19 @@ If sufficient financial details are provided, perform the following calculation 
 
 Display the results as:
 
-Insurance payout: $____  
-Attorney fee (33⅓%): $____  
-Medical fees: $____  
-Client remaining: $____  
+Insurance payout: $____
+Attorney fee (33⅓%): $____
+Medical fees: $____
+Client remaining: $____
 
 ---
 DECISION LOGIC:
 
 Use the following rules to determine case acceptance:
 
-1. If the client **has car insurance**, answer **ACCEPT CASE**.  
-2. If the client **has no car insurance** but **has health insurance**, and the remaining amount (after attorney + medical fees) is positive, answer **ACCEPT CASE**.  
-3. If the client **has no car insurance** and the remaining amount is insufficient or negative, answer **REJECT CASE**.  
+1. If the client **has car insurance**, answer **ACCEPT CASE**.
+2. If the client **has no car insurance** but **has health insurance**, and the remaining amount (after attorney + medical fees) is positive, answer **ACCEPT CASE**.
+3. If the client **has no car insurance** and the remaining amount is insufficient or negative, answer **REJECT CASE**.
 4. If any of the required data fields (incident date, accident type, or insurance coverage) are missing, do not calculate — mark as **INCOMPLETE DATA**.
 
 ---
@@ -525,10 +524,10 @@ DEFENDANT INFORMATION:
 <value or "data not provided">
 
 CALCULATION SUMMARY:
-Insurance payout: $____  
-Attorney fee (33⅓%): $____  
-Medical fees: $____  
-Client remaining: $____  
+Insurance payout: $____
+Attorney fee (33⅓%): $____
+Medical fees: $____
+Client remaining: $____
 
 RECOMMENDATION:
 <ACCEPT CASE / REJECT CASE / INSUFFICIENT DATA>
@@ -538,31 +537,31 @@ REASONING SUMMARY:
 
 MISSING OR REJECTED CASE HANDLING:
 
-If any data is missing for any section, automatically generate a professional email to the client.  
+If any data is missing for any section, automatically generate a professional email to the client.
 This email must:
-- Politely summarize the case findings from the output format.  
+- Politely summarize the case findings from the output format.
 - Include the calculation summary if applicable.
 - Include the client information if available.
-- Explain why the case was rejected or which data is missing.  
-- Request the missing documents or clarifications if applicable.  
-- Maintain professional and empathetic tone.  
+- Explain why the case was rejected or which data is missing.
+- Request the missing documents or clarifications if applicable.
+- Maintain professional and empathetic tone.
 
-If case is **rejected**, automatically generate a professional email to the client.  
+If case is **rejected**, automatically generate a professional email to the client.
 This email must:
-- Politely summarize the case findings from the output format.  
+- Politely summarize the case findings from the output format.
 - Include the calculation summary if applicable.
 - Include the client information if available.
-- Explain why the case was rejected or which data is missing.  
-- Request the missing documents or clarifications if applicable.  
-- Maintain professional and empathetic tone.  
+- Explain why the case was rejected or which data is missing.
+- Request the missing documents or clarifications if applicable.
+- Maintain professional and empathetic tone.
 
 
-If case is accepted, automatically generate a professional email to the client.  
+If case is accepted, automatically generate a professional email to the client.
 This email must:
-- Politely summarize the case findings from the output format.  
+- Politely summarize the case findings from the output format.
 - Include the calculation summary from the output format.
 - Include the client information if available.
-- Maintain professional and empathetic tone.  
+- Maintain professional and empathetic tone.
 
     """,
 )
@@ -580,7 +579,7 @@ Your available sub-agents are:
 - voice_bot_scheduler
 - evidence_sorter_initial
 - evidence_sorter_1
-- evidence_sorter_2 
+- evidence_sorter_2
 - evidence_sorter_3
 
 Each legal case input will end with an indicator formatted as:
@@ -614,10 +613,10 @@ Each legal case input will end with an indicator formatted as:
    → "Sort_Initial", and automatically transfer to the "evidence_sorter_initial" sub-agent.
 
 ### IMPORTANT NOTE
-The orchestrator should not modify the input text or perform calculations itself. 
+The orchestrator should not modify the input text or perform calculations itself.
 Its sole responsibility is to identify the correct sub-agent based on the Action keyword or default routing rule.
 
-If the input lacks an Action keyword or if the provided keyword is invalid, 
+If the input lacks an Action keyword or if the provided keyword is invalid,
 respond with:
 "Unable to determine sub-agent. Please include a valid Action keyword (Sort, Sort_Initial, or Wrangle)."
      """,
