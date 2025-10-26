@@ -13,3 +13,11 @@ export const stepAtom = atom(1);
 
 export const stepOutputsAtom = atom<string[]>(Array(4));
 export const loadingDataAtom = atom(false);
+
+export const reportPartsAtom = atom<string[]>([
+  "A",
+  "B",
+  "C",
+  "D\n\n## Joe BIDEN\n **sus**",
+  "E `very cool code!`",
+]);

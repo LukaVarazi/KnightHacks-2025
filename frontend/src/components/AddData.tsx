@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import StepContext from "~/lib/context";
 import { useAtomValue } from "jotai";
 import { stepAtom } from "~/lib/atom";
+import Report from "./Report";
 
 export default function AddData() {
   const step = useAtomValue(stepAtom);
@@ -24,9 +25,7 @@ export default function AddData() {
           <TabsTrigger disabled={step <= 3} value="insurance">
             Insurnace Policy
           </TabsTrigger>
-          <TabsTrigger disabled={step <= 4} value="report">
-            Report
-          </TabsTrigger>
+          <TabsTrigger value="report">Report</TabsTrigger>
         </TabsList>
 
         <TabsContent value="emt">
@@ -39,7 +38,7 @@ export default function AddData() {
           <ResizablePortion step={3} />
         </TabsContent>
         <TabsContent value="report">
-          <ResizablePortion step={4} />
+          <Report />
         </TabsContent>
       </Tabs>
     </div>
