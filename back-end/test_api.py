@@ -74,8 +74,4 @@ def run_test():
         print(f"An unexpected error occurred during the test: {e}")
 
 if __name__ == '__main__':
-<<<<<<< HEAD
     run_test()
-=======
-    run_test()
->>>>>>> main

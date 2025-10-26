@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-import io
-import os
-import json
-import base64
-import requests
-import time
-from flask import Flask, request, jsonify
-from pypdf import PdfReader # Used for fast, accurate native text extraction
-=======
 import requests
 import os
 import json
@@ -15,48 +5,70 @@ import time
 import re
 import io
 import base64
+import glob
 from flask import Flask, request, jsonify
 from pypdf import PdfReader 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List, Dict, Any
 import sys
->>>>>>> main
 
-# --- Configuration ---
-# !!! IMPORTANT: You MUST set your actual Gemini API Key here or use environment variables !!!
-GEMINI_API_KEY = "AIzaSyDLMUtIu-Bg0qykFwX-6p3-ST5JuWOOEm4" 
+# --- Configuration & Globals ---
+# NOTE: Using a placeholder API key. Replace with your actual key.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDLMUtIu-Bg0qykFwX-6p3-ST5JuWOOEm4") 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
-<<<<<<< HEAD
-# If native text is less than this threshold, we assume it's a scanned/image-based PDF and use Gemini.
 NATIVE_TEXT_THRESHOLD = 50 
 
-app = Flask(__name__)
-# Global variable for a basic server status check and storing the final parsed string
-=======
-NATIVE_TEXT_THRESHOLD = 50 
+# Agent Development Kit (ADK) Configuration
+API_URL = "http://127.0.0.1:8000" # ADK Server URL
+
+# CRITICAL FIX: APP_NAME must match the root agent's name defined in agent.py
+# The root agent name is 'agent_coordinator'.
+APP_NAME = "agent_coordinator" 
+
+USER_ID = "progressive_user_1"
+SESSION_ID = "s_progressive_claim_1"
+DATA_FOLDER = "./data_for_agent"
+
+# Global store for the final string result (stores all step results)
+# The frontend can fetch this after the full pipeline runs.
+pipeline_result_store: List[Dict[str, str]] = []
 
 app = Flask(__name__)
-# Now stores both the extracted text and the optional transcript
->>>>>>> main
-extracted_text_store = "No documents analyzed yet."
 
-# Function to handle API requests with exponential backoff
+# --- Utility Functions (Keep as-is for robust file processing) ---
+
+def delimit_output_string(output_text: str) -> str:
+    """
+    Separates values by placing a 'thinking face' emoji (🤔) next to a simplified 
+    set of keywords and patterns for frontend delimiting.
+    """
+    DELIMITER_EMOJI = " 🤔" 
+    
+    # 1. 'approved' (Case-insensitive)
+    output_text = re.sub(r'(approved)', r'\1' + DELIMITER_EMOJI, output_text, flags=re.IGNORECASE)
+
+    # 2. 'denied' (Case-insensitive)
+    output_text = re.sub(r'(denied)', r'\1' + DELIMITER_EMOJI, output_text, flags=re.IGNORECASE)
+
+    # 3. 'Pros' (using word boundary \b)
+    output_text = re.sub(r'\b(Pros)\b', r'\1' + DELIMITER_EMOJI, output_text)
+
+    # 4. 'Cons' (using word boundary \b)
+    output_text = re.sub(r'\b(Cons)\b', r'\1' + DELIMITER_EMOJI, output_text)
+
+    # 5. The 2-digit number followed by a '%' sign (e.g., "85%")
+    output_text = re.sub(r'(\d{2}%)', r'\1' + DELIMITER_EMOJI, output_text)
+    
+    # 6. Insurance payout labels
+    output_text = re.sub(r'Insurance payout:', r'Insurance payout:' + DELIMITER_EMOJI, output_text)
+    output_text = re.sub(r'Attorney fee \(33⅓%\):', r'Attorney fee (33⅓%):' + DELIMITER_EMOJI, output_text)
+    output_text = re.sub(r'Medical fees:', r'Medical fees:' + DELIMITER_EMOJI, output_text)
+    output_text = re.sub(r'Client remaining:', r'Client remaining:' + DELIMITER_EMOJI, output_text)
+
+    return output_text
+
+
 def call_gemini_api(payload, max_retries=5):
-    """Handles API request and implements exponential backoff for reliability."""
-<<<<<<< HEAD
-    for attempt in range(max_retries):
-        try:
-            headers = {'Content-Type': 'application/json'}
-            # API Key is appended to the URL as a query parameter
-            response = requests.post(f"{GEMINI_API_URL}?key={GEMINI_API_KEY}", 
-                                     headers=headers, 
-                                     data=json.dumps(payload),
-                                     timeout=120) # Added timeout
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            # Retry on rate limiting (429) or common server errors (5xx)
-=======
-    # ... (function remains unchanged) ...
+    """Handles API request and implements exponential backoff."""
     for attempt in range(max_retries):
         try:
             headers = {'Content-Type': 'application/json'}
@@ -67,51 +79,25 @@ def call_gemini_api(payload, max_retries=5):
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
->>>>>>> main
             if response.status_code in [429, 500, 503] and attempt < max_retries - 1:
                 wait_time = 2 ** attempt
                 time.sleep(wait_time)
             else:
                 raise e
     return None
-<<<<<<< HEAD
 
-@app.route('/', methods=['GET'])
-def index():
-    """Serves a basic API status message."""
-    return jsonify({
-        "status": "API is operational (Hybrid PDF/Image Analyzer)",
-        "message": "Send a POST request to /upload_pdf with a file named 'pdf_file' to begin analysis.",
-        "last_text_preview": extracted_text_store[:80] + "..." if len(extracted_text_store) > 80 else extracted_text_store
-    }), 200
-
-@app.route('/upload_pdf', methods=['POST'])
-def upload_pdf():
-    global extracted_text_store
-
-    if 'pdf_file' not in request.files:
-        return jsonify({"error": "Missing file: Expecting a file named 'pdf_file' in the form data."}), 400
-=======
-
-# --- NEW: M4A Transcription Function ---
 def transcribe_audio_bytes(file_bytes: bytes) -> str:
     """Uses Gemini to transcribe an M4A audio file."""
     if not GEMINI_API_KEY:
-        raise ValueError("Gemini API Key is not configured for audio transcription.")
+        raise ValueError("Gemini API Key is not configured.")
         
     encoded_audio = base64.b64encode(file_bytes).decode('utf-8')
-    
-    system_prompt = (
-        "You are an expert transcriber. Transcribe the audio precisely. "
-        "Do not add any analysis or introductory remarks. "
-        "Format the output clearly, including speaker identification if possible."
-    )
+    system_prompt = "You are an expert transcriber. Transcribe the audio precisely. Do not add any analysis or introductory remarks. Format the output clearly, including speaker identification if possible."
     
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": [
             {"parts": [
-                # Pass audio data with the correct MIME type
                 {"inlineData": {"mimeType": "audio/m4a", "data": encoded_audio}},
                 {"text": "Transcribe the audio provided."}
             ]}
@@ -126,16 +112,44 @@ def transcribe_audio_bytes(file_bytes: bytes) -> str:
         
     return generated_text
 
-# --- Refactored PDF Parsing Logic ---
-def parse_pdf_bytes(file_bytes: bytes) -> str:
-    # ... (function body remains identical to previous version) ...
-    """
-    Core logic to parse PDF bytes, falling back to Gemini for OCR.
-    Returns the extracted string or raises an exception on failure.
-    """
-    native_text = ""
-    source = "Unknown"
+def analyze_image_bytes(file_bytes: bytes, mime_type: str) -> str:
+    """Uses Gemini to analyze image bytes (PNG/JPG) for text and description."""
+    if not GEMINI_API_KEY:
+        raise ValueError("Gemini API Key is not configured for image analysis.")
+        
+    encoded_image = base64.b64encode(file_bytes).decode('utf-8')
 
+    system_prompt = (
+        "You are an expert document analyst specializing in accident reports. "
+        "Extract all text content from the image (OCR). "
+        "Crucially, provide a detailed, objective description of the visual content, "
+        "such as visible damage, position of vehicles, and environment. "
+        "Combine the extracted text and visual descriptions into a single, cohesive narrative. "
+        "Do not include any introductory or concluding remarks."
+    )
+    
+    payload = {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": [
+            {"parts": [
+                {"inlineData": {"mimeType": mime_type, "data": encoded_image}},
+                {"text": "Analyze the image and provide the combined narrative as requested."}
+            ]}
+        ]
+    }
+    
+    gemini_response = call_gemini_api(payload)
+    generated_text = gemini_response.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+    
+    if not generated_text:
+        raise Exception("Gemini returned an empty text response during image analysis.")
+
+    return generated_text
+
+def parse_pdf_bytes(file_bytes: bytes) -> str:
+    """Core logic to parse PDF bytes, falling back to Gemini for OCR and embedded images."""
+    native_text = ""
+    
     # 1. Attempt Native Text Extraction
     try:
         pdf_reader = PdfReader(io.BytesIO(file_bytes))
@@ -148,213 +162,44 @@ def parse_pdf_bytes(file_bytes: bytes) -> str:
     
     # 2. Hybrid Check and Fallback to Gemini
     if len(native_text) > NATIVE_TEXT_THRESHOLD:
-        extracted_content = native_text
-        source = "Native Extraction (pypdf)"
+        return native_text
     else:
-        if not GEMINI_API_KEY:
-            raise ValueError("Gemini API Key is not configured for OCR/Image Analysis fallback.")
-        
-        # Use Gemini for OCR/Image Analysis
-        encoded_pdf = base64.b64encode(file_bytes).decode('utf-8')
+        # Use the same image analysis prompt as it covers both OCR and visual description
+        # We assume the PDF MIME type is handled by the model when passed as inlineData
+        return analyze_image_bytes(file_bytes, "application/pdf")
 
-        system_prompt = (
-            "You are an expert document analyst specializing in accident reports. "
-            "Extract all text content from the document, including any text visible within images (OCR). "
-            "Crucially, for any embedded images depicting car crashes, provide a detailed, objective description "
-            "of the visible damage, position of vehicles, and environment. Combine the extracted text and "
-            "image descriptions into a single, cohesive narrative. Do not include any introductory or concluding remarks."
-        )
-        
-        payload = {
-            "systemInstruction": {"parts": [{"text": system_prompt}]},
-            "contents": [
-                {"parts": [
-                    {"inlineData": {"mimeType": "application/pdf", "data": encoded_pdf}},
-                    {"text": "Analyze the document and provide the combined narrative as requested."}
-                ]}
-            ]
-        }
-        
-        gemini_response = call_gemini_api(payload)
-        generated_text = gemini_response.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-        
-        if not generated_text:
-            raise Exception("Gemini returned an empty text response.")
+# --- ADK Agent Logic ---
 
-        extracted_content = generated_text
-        source = "Gemini OCR/Image Analysis Fallback"
-
-    print(f"Extraction Source: {source}")
-    return extracted_content
->>>>>>> main
-    
-    file = request.files['pdf_file']
-    
-    if not file.filename.lower().endswith('.pdf'):
-        return jsonify({"error": "Invalid file type. Please upload a PDF."}), 400
-
-    file_bytes = file.read()
-    native_text = ""
-    source = "Unknown"
-
-    # --- Step 1: Attempt Native Text Extraction (Accuracy Priority) ---
-    try:
-        pdf_reader = PdfReader(io.BytesIO(file_bytes))
-        for page in pdf_reader.pages:
-            native_text += page.extract_text() or ""
-        # Clean up excessive whitespace/newlines
-        native_text = ' '.join(native_text.split())
-    except Exception:
-        # If pypdf fails (e.g., corrupted file), we ignore the error and proceed to Gemini fallback
-        pass
-    
-    # --- Step 2: Hybrid Check and Fallback to Gemini (OCR/Image Analysis) ---
-    if len(native_text) > NATIVE_TEXT_THRESHOLD:
-        # Success: Native text is sufficient (Text-only PDF)
-        extracted_content = native_text
-        source = "Native Extraction (pypdf)"
-    else:
-        # Fallback: Text is image-based or sparse, use Gemini for OCR and visual description
-        if not GEMINI_API_KEY:
-            return jsonify({"error": "Gemini API Key is not configured for OCR/Image Analysis fallback."}), 500
-        
-        try:
-            # Encode PDF bytes to base64 for API transmission
-            encoded_pdf = base64.b64encode(file_bytes).decode('utf-8')
-
-            # CRITICAL: Prompt for combined text extraction AND detailed image description
-            system_prompt = (
-                "You are an expert document analyst specializing in accident reports. "
-                "Extract all text content from the document, including any text visible within images (OCR). "
-                "Crucially, for any embedded images depicting car crashes, provide a detailed, objective description "
-                "of the visible damage, position of vehicles, and environment. Combine the extracted text and "
-                "image descriptions into a single, cohesive narrative. Do not include any introductory or concluding remarks."
-            )
-            
-            payload = {
-                # Place system instruction here for better control
-                "systemInstruction": {"parts": [{"text": system_prompt}]},
-                "contents": [
-                    {"parts": [
-                        {"inlineData": {"mimeType": "application/pdf", "data": encoded_pdf}},
-                        {"text": "Analyze the document and provide the combined narrative as requested."}
-                    ]}
-                ]
-            }
-            
-            gemini_response = call_gemini_api(payload)
-            generated_text = gemini_response.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-            
-            if not generated_text:
-                raise Exception("Gemini returned an empty text response.")
-
-            extracted_content = generated_text
-            source = "Gemini OCR/Image Analysis Fallback"
-            
-        except Exception as e:
-            app.logger.error(f"Error during Gemini fallback: {e}")
-            return jsonify({"error": f"Failed to perform Gemini OCR/Image Analysis: {str(e)}"}), 500
-
-    # --- Step 3: Return Response ---
-    # Store the final parsed string globally
-    extracted_text_store = extracted_content
-    
-    return jsonify({
-        "status": "success",
-        "extraction_source": source,
-        "message": f"Text and image analysis completed successfully via {source}.",
-        "extracted_content_string": extracted_content, # The final string containing text and image descriptions
-        "character_count": len(extracted_content),
-    }), 200
-
-<<<<<<< HEAD
-if __name__ == '__main__':
-    # Flask must be run in a separate, dedicated terminal
-    app.run(host='127.0.0.1', port=5000, debug=True)
-=======
-# --- Updated Flask Endpoint ---
-# Now handles two optional files
-@app.route('/upload_data', methods=['POST'])
-def upload_data():
-    global extracted_text_store
-    pdf_file = request.files.get('pdf_file')
-    audio_file = request.files.get('audio_file')
-    
-    if not pdf_file and not audio_file:
-        return jsonify({"error": "Missing files: Expecting 'pdf_file' or 'audio_file'."}), 400
-
-    combined_content = []
-    source = []
-
-    # Process PDF
-    if pdf_file and pdf_file.filename.lower().endswith('.pdf'):
-        try:
-            pdf_bytes = pdf_file.read()
-            pdf_content = parse_pdf_bytes(pdf_bytes)
-            combined_content.append(f"--- DOCUMENT ANALYSIS ---\n{pdf_content}")
-            source.append("PDF/Image")
-        except Exception as e:
-            app.logger.error(f"Error during PDF processing: {e}")
-            return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 500
-    
-    # Process M4A
-    if audio_file and audio_file.filename.lower().endswith('.m4a'):
-        try:
-            audio_bytes = audio_file.read()
-            audio_transcript = transcribe_audio_bytes(audio_bytes)
-            combined_content.append(f"--- CALL TRANSCRIPT ---\n{audio_transcript}")
-            source.append("Audio Transcription")
-        except Exception as e:
-            app.logger.error(f"Error during audio processing: {e}")
-            return jsonify({"error": f"Failed to transcribe audio: {str(e)}"}), 500
-
-    # Combine all results into a single string for the agent
-    final_content = "\n\n".join(combined_content)
-    
-    # Store the final parsed string globally
-    extracted_text_store = final_content
-    
-    return jsonify({
-        "status": "success",
-        "extraction_source": " & ".join(source),
-        "message": "Data processing completed successfully.",
-        "extracted_content_string": final_content, 
-        "character_count": len(final_content),
-    }), 200
-
-
-#======================================================
-# LUKA CODE BEYOND THIS POINT - DO NOT TOUCH KURWA!
-#======================================================
-API_URL = "http://127.0.0.1:8000"
-APP_NAME = "agents"
-USER_ID = "user1"
-SESSION_ID = "s_123"
-
-#======================
-# FUNCTIONS (Unchanged from previous version)
-#======================
 def ensure_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
-    """Create session if it doesn't exist"""
+    """Create session if it doesn't exist, preventing termination issues."""
     session_payload = {"state": {}}
     resp = requests.post(
         f"{API_URL}/apps/{app_name}/users/{user_id}/sessions/{session_id}",
         json=session_payload
     )
     if resp.status_code in (200, 201):
-        print("Session ready.")
+        app.logger.info("ADK Session ready.")
     elif resp.status_code == 409:
-        print("Session already exists.")
+        app.logger.info("ADK Session already exists.")
     else:
-        raise Exception(f"Failed to create session: {resp.status_code} {resp.text}")
+        # If the session cannot be created or accessed, raise a critical error
+        raise Exception(f"Failed to ensure ADK session: {resp.status_code} {resp.text}")
 
+def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID) -> Tuple[str, Optional[int]]:
+    """
+    Send prompt to ADK agent and return final string and HTTP status code.
+    Allows for non-200 responses to be handled gracefully without crashing the pipeline.
+    """
+    try:
+        ensure_session(app_name, user_id, session_id)
+    except Exception as e:
+        # Return a critical error if session setup fails (likely ADK server is down)
+        return f"AGENT CRITICAL ERROR: Could not establish session. ADK Server at {API_URL} may be offline. Detail: {e}", 503
 
-def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
-    """Send prompt to ADK agent and return final string"""
-    ensure_session(app_name, user_id, session_id)
-    # ... (omitted payload/response logic, identical to previous version) ...
     payload = {
-        "app_name": app_name,
+        # The ADK API requires the app_name (which is the root agent name) 
+        # to be repeated here in the body payload for consistency.
+        "app_name": app_name, 
         "user_id": user_id,
         "session_id": session_id,
         "new_message": {
@@ -362,151 +207,249 @@ def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSIO
             "parts": [{"text": prompt}]
         }
     }
-
-    response = requests.post(f"{API_URL}/run", json=payload)
-
-    if response.status_code == 200:
-        data = response.json()
-        for event in reversed(data):
-            content = event.get("content", {})
-            parts = content.get("parts", [])
-            for part in parts:
-                if "text" in part:
-                    return part["text"].strip()
-        return "No text found in agent response."
-    else:
-        return f"Error {response.status_code}: {response.text}"
-
-def find_recommendation(text):
-    """Finds and maps the specific recommendation phrase from the agent's text."""
-    mapping = {
-        "ACCEPT DATA": "ACCEPT",
-        "REJECT DATA": "REJECT",
-        "INCOMPLETE DATA": "INSUFFICIENT DATA"
-    }
-    pattern = r'RECOMMENDATION:\s*(ACCEPT DATA|REJECT DATA|INCOMPLETE DATA)'
-    match = re.search(pattern, text)
     
-    if match:
-        return mapping.get(match.group(1), None) 
-    return None 
+    # Explicitly set content-type for robustness
+    headers = {'Content-Type': 'application/json'}
 
-def find_data(text):
-    """Finds and maps the specific recommendation phrase from the agent's text."""
+    try:
+        # Add a timeout to prevent indefinite hanging
+        response = requests.post(f"{API_URL}/run", json=payload, headers=headers, timeout=60)
+
+        if response.status_code == 200:
+            data = response.json()
+            for event in reversed(data):
+                content = event.get("content", {})
+                parts = content.get("parts", [])
+                for part in parts:
+                    if "text" in part:
+                        # Return the text and the successful status code
+                        return part["text"].strip(), 200
+            return "No text found in agent response.", 200
+        else:
+            # Return the error message and the failed status code
+            return f"Error {response.status_code}: {response.text}", response.status_code
+            
+    except requests.exceptions.ConnectionError:
+        # Specific error if the ADK server is not reachable
+        return f"AGENT CRITICAL ERROR: Failed to connect to ADK Server at {API_URL}. Is the ADK server running?", 503
+    except requests.exceptions.Timeout:
+        # Specific error if the request times out
+        return "AGENT CRITICAL ERROR: ADK Request timed out (over 60 seconds). Agent may be stuck.", 504
+    except Exception as e:
+        # Catch any other unexpected request-related error
+        return f"AGENT CRITICAL ERROR: An unexpected error occurred during ADK request: {e}", 500
+
+def find_data_sufficiency(text):
+    """Finds the data sufficiency statement."""
     mapping = {
         "SUFFICIENT DATA": "SUFFICIENT DATA",
-        "MISSING DATA": "INSUFFICIENT DATA",
+        "INSUFFICIENT DATA": "INSUFFICIENT DATA", # Added INSUFFICIENT DATA case
+        "ACCEPT CASE": "ACCEPT CASE",
+        "REJECT CASE": "REJECT CASE",
+        "INCOMPLETE DATA": "INSUFFICIENT DATA"
     }
-    pattern = r'RECOMMENDATION:\s*(SUFFICIENT DATA|INSUFFICIENT DATA)'
-    match = re.search(pattern, text)
     
+    # Updated pattern to capture all possible recommendation outcomes
+    pattern = r'(SUFFICIENT DATA|INSUFFICIENT DATA|ACCEPT CASE|REJECT CASE|INCOMPLETE DATA)'
+    match = re.search(pattern, text)
     if match:
-        return mapping.get(match.group(1), None) 
+        # Return the mapped value or the match itself if not in the map (safer)
+        return mapping.get(match.group(1), match.group(1)) 
     return None 
 
-#======================
-# RUN AGENT
-#======================
-if __name__ == "__main__":
-    
-    # 🛑 CRITICAL: Flask server remains commented out for direct pipeline execution.
-    # app.run(host='127.0.0.1', port=5000, debug=True)
+# --- Batch Processing and Pipeline Orchestration ---
 
-    PDF_FILE = "testt.pdf"
-    AUDIO_FILE = "first.m4a" # <--- New file to load
-    
+def process_files_in_folder(folder_path: str) -> str:
+    """Loads and parses all PDF, M4A, and image files in a folder."""
     combined_content = []
+    
+    if not os.path.isdir(folder_path):
+        app.logger.error(f"Data folder not found at: {folder_path}. Cannot load files.")
+        return "ERROR: Data folder not found."
+    
+    # Use glob to find all files in the directory
+    file_paths = glob.glob(os.path.join(folder_path, '*'))
 
-    # 1. Generate the PDF parse string
-    try:
-        with open(PDF_FILE, 'rb') as f:
-            pdf_bytes = f.read()
+    if not file_paths:
+        app.logger.warning("No files found in the data folder.")
+        return "WARNING: No PDF or M4A files found in the folder."
+    
+    files_processed_count = 0
+
+    for file_path in file_paths:
+        file_name = os.path.basename(file_path)
+        file_extension = file_name.lower().split('.')[-1]
         
-        print(f"--- Attempting to Parse PDF: {PDF_FILE} ---")
-        pdf_parse = parse_pdf_bytes(pdf_bytes)
-        combined_content.append(f"--- DOCUMENT ANALYSIS ---\n{pdf_parse}")
+        try:
+            with open(file_path, 'rb') as f:
+                file_bytes = f.read()
 
-    except FileNotFoundError:
-        print(f"🚨 WARNING: PDF file '{PDF_FILE}' not found. Skipping PDF analysis.")
-    except Exception as e:
-        print(f"🚨 ERROR during PDF parsing: {e}")
-        exit()
-
-    # 2. Generate the M4A transcription string
-    try:
-        with open(AUDIO_FILE, 'rb') as f:
-            audio_bytes = f.read()
+            if file_extension == 'pdf':
+                print(f"-> Processing PDF file: {file_name}")
+                content = parse_pdf_bytes(file_bytes)
+                combined_content.append(f"--- DOCUMENT ANALYSIS (PDF: {file_name}) ---\n{content}")
+                files_processed_count += 1
             
-        print(f"\n--- Attempting to Transcribe Audio: {AUDIO_FILE} ---")
-        audio_transcript = transcribe_audio_bytes(audio_bytes)
-        combined_content.append(f"--- CALL TRANSCRIPT ---\n{audio_transcript}")
+            elif file_extension == 'm4a':
+                print(f"-> Transcribing M4A file: {file_name}")
+                content = transcribe_audio_bytes(file_bytes)
+                combined_content.append(f"--- TRANSCRIPT (M4A: {file_name}) ---\n{content}")
+                files_processed_count += 1
+                
+            elif file_extension in ['png', 'jpg', 'jpeg']:
+                mime_type = f"image/{file_extension}"
+                print(f"-> Analyzing Image file: {file_name}")
+                content = analyze_image_bytes(file_bytes, mime_type)
+                combined_content.append(f"--- IMAGE ANALYSIS ({file_name}) ---\n{content}")
+                files_processed_count += 1
+            
+            else:
+                print(f"-> Skipping unsupported file type: {file_name}")
+
+        except Exception as e:
+            app.logger.error(f"Failed to process file {file_name}: {e}")
+            combined_content.append(f"--- ERROR PROCESSING {file_name} --- Error: {e}")
+
+    if files_processed_count == 0:
+        return "WARNING: No supported files (PDF, M4A, PNG, JPG) were processed."
+
+    return "\n\n".join(combined_content)
+
+
+def run_claim_pipeline() -> List[Dict[str, str]]:
+    """
+    Executes the multi-step claims processing pipeline.
+    """
+    global pipeline_result_store
+    pipeline_result_store = []
+    
+    # 1. Load and process all client data from the local folder
+    app.logger.info("--- STEP 0: Data Ingestion and Pre-processing ---")
+    initial_data = process_files_in_folder(DATA_FOLDER)
+    
+    if "ERROR:" in initial_data or "WARNING:" in initial_data:
+        pipeline_result_store.append({"step": "0. Ingestion", "status": "ERROR", "result": initial_data})
+        return pipeline_result_store
+
+    # 2. STEP 1: Initial Case Acceptance/Rejection
+    app.logger.info("--- STEP 1: Initial Case Acceptance/Rejection (evidence_sorter_initial) ---")
+    
+    # The prompt must tell the coordinator which sub-agent to use
+    step1_prompt = f"Case Data for Initial Review:\n\n{initial_data}\n\nAction: Sort_Initial"
+    
+    step1_result, status = callAgent(step1_prompt, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
+    
+    if status != 200:
+        pipeline_result_store.append({"step": "1. Initial Review", "status": "ADK ERROR", "result": step1_result})
+        return pipeline_result_store
+    
+    # Check the result of the initial sort for case status
+    recommendation = find_data_sufficiency(step1_result)
+    
+    if recommendation in ["REJECT CASE", "INSUFFICIENT DATA"]:
+        status_label = "REJECTED" if recommendation == "REJECT CASE" else "INSUFFICIENT DATA"
+        final_output = delimit_output_string(step1_result)
+        pipeline_result_store.append({"step": "1. Initial Review", "status": status_label, "result": final_output})
+        app.logger.info(f"Pipeline stopped: {status_label}")
+        return pipeline_result_store
         
-    except FileNotFoundError:
-        print(f"🚨 WARNING: Audio file '{AUDIO_FILE}' not found. Skipping audio transcription.")
+    final_output = delimit_output_string(step1_result)
+    pipeline_result_store.append({"step": "1. Initial Review", "status": "ACCEPTED/SUFFICIENT", "result": final_output})
+
+    # The pipeline continues if accepted and sufficient data is present
+    previous_step_summary = final_output 
+    
+    # 3. STEP 2: Detailed Evidence Sorting - Phase 1 (Witness/Interviews)
+    app.logger.info("--- STEP 2: Detailed Evidence Sorting - Phase 1 (evidence_sorter_1) ---")
+    
+    # Pass the initial data along with the output from the previous step
+    step2_input = f"Initial Summary:\n{previous_step_summary}\n\nNew/Combined Data:\n{initial_data}"
+    step2_prompt = f"{step2_input}\n\nAction: Wraggler1"
+    
+    step2_result, status = callAgent(step2_prompt, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
+    
+    if status != 200:
+        pipeline_result_store.append({"step": "2. Evidence Sort 1", "status": "ADK ERROR", "result": step2_result})
+        return pipeline_result_store
+
+    final_output = delimit_output_string(step2_result)
+    pipeline_result_store.append({"step": "2. Evidence Sort 1", "status": "COMPLETE", "result": final_output})
+    previous_step_summary = final_output 
+
+    # 4. STEP 3: Detailed Evidence Sorting - Phase 2 (Medical/Legal Verification)
+    app.logger.info("--- STEP 3: Detailed Evidence Sorting - Phase 2 (evidence_sorter_2) ---")
+    
+    step3_input = f"Previous Sort 1 Result:\n{previous_step_summary}\n\nCombined Raw Data:\n{initial_data}"
+    step3_prompt = f"{step3_input}\n\nAction: Wraggler2"
+    
+    step3_result, status = callAgent(step3_prompt, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
+    
+    if status != 200:
+        pipeline_result_store.append({"step": "3. Evidence Sort 2", "status": "ADK ERROR", "result": step3_result})
+        return pipeline_result_store
+    
+    final_output = delimit_output_string(step3_result)
+    pipeline_result_store.append({"step": "3. Evidence Sort 2", "status": "COMPLETE", "result": final_output})
+    previous_step_summary = final_output 
+
+    # 5. STEP 4: Final Evidence Synthesis
+    app.logger.info("--- STEP 4: Final Evidence Synthesis (evidence_sorter_3) ---")
+    
+    step4_input = f"Results from Sort 2 Verification:\n{previous_step_summary}\n\nOriginal Raw Data:\n{initial_data}"
+    step4_prompt = f"{step4_input}\n\nAction: Wraggler3"
+    
+    step4_result, status = callAgent(step4_prompt, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
+    
+    if status != 200:
+        pipeline_result_store.append({"step": "4. Final Synthesis", "status": "ADK ERROR", "result": step4_result})
+        return pipeline_result_store
+    
+    final_output = delimit_output_string(step4_result)
+    pipeline_result_store.append({"step": "4. Final Synthesis", "status": "COMPLETE", "result": final_output})
+
+    app.logger.info("--- Pipeline Completed Successfully ---")
+    return pipeline_result_store
+
+# --- Flask Routes ---
+
+@app.route('/run_batch_pipeline', methods=['POST'])
+def run_pipeline_endpoint():
+    """Endpoint to trigger the full claims pipeline."""
+    try:
+        results = run_claim_pipeline()
+        return jsonify(results), 200
     except Exception as e:
-        print(f"🚨 ERROR during audio transcription: {e}")
-        # Decide if you want to exit here or continue with just the PDF text
+        app.logger.error(f"Critical error during pipeline execution: {e}", exc_info=True)
+        return jsonify({"error": f"Internal Server Error during pipeline run: {e}"}), 500
 
-    # Final combined text
-    if not combined_content:
-        print("🚨 ERROR: No data (PDF or Audio) was successfully loaded. Exiting.")
-        exit()
+@app.route('/pipeline_results', methods=['GET'])
+def get_pipeline_results():
+    """Endpoint to retrieve the last pipeline run's results."""
+    # This route is intended for a frontend to poll or fetch the final state.
+    if not pipeline_result_store:
+        return jsonify({"message": "Pipeline has not been run yet."}), 200
+    return jsonify(pipeline_result_store), 200
 
-    initialParse = "\n\n".join(combined_content)
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Basic health check to confirm Flask is running."""
+    return jsonify({"status": "ok", "app": APP_NAME}), 200
+
+if __name__ == '__main__':
+    # Create the data folder if it doesn't exist to prevent file I/O errors
+    if not os.path.exists(DATA_FOLDER):
+        os.makedirs(DATA_FOLDER)
+        print(f"Created data folder: {DATA_FOLDER}")
+        
+    print(f"\n--- Starting Progressive Claims ADK Runner ---\n")
+    print(f"ADK Agent: {APP_NAME}")
+    print(f"ADK Server URL: {API_URL}")
+    print(f"Flask Runner URL: http://127.0.0.1:5000/run_batch_pipeline")
+    print(f"Waiting for ADK Server to start on {API_URL}...")
+
+    # Set up basic logging
+    import logging
+    app.logger.setLevel(logging.INFO)
     
-    print("\n--- Combined Text Preview ---")
-    print(initialParse[:200] + "..." if len(initialParse) > 200 else initialParse)
-
-    # 3. AGENT PIPELINE Execution (Unchanged)
-    print("\n--- Starting Agent Pipeline ---")
-
-    # STEP 1: Check and Sort Data
-    parsedText = initialParse + "\n\nAction: Sort_Initial"
-    print(f"\nCalling Agent with Action: Sort_Initial...")
-    sortInitialResult = callAgent(parsedText)
-    print("--- Agent Response (Sort_Initial) ---")
-    print(sortInitialResult)
-
-    recommendation = find_recommendation(sortInitialResult)
-    print(f"\nExtracted Recommendation: {recommendation}")
-
-    sortResult = ""
-    if recommendation == "ACCEPT":
-        # STEP 2: Ensure No Files are Missing
-        print("\nRunning ACCEPT path...")
-        parsedText = initialParse + "\n\nAction: Sort"
-        sortResult = callAgent(parsedText)
-    else:
-        print("\nRunning REJECT/INSUFFICIENT path...")
-        parsedText = initialParse + "\n\nAction: Email"
-        sortResult = callAgent(parsedText)
-        sys.exit("Program Terminated")
-
-    dataSufficiency = find_data(sortResult)
-    print(f"\nExtracted Data Sufficiency: {dataSufficiency}")
-
-    sort2Result = ""
-    if dataSufficiency == "SUFFICIENT DATA":
-        # STEP 3:
-        print("\nRunning SUFFICIENT DATA path...")
-        parsedText = initialParse + "\n\n" + sortResult + "\n\nAction: Wranggler2"
-        sort2Result = callAgent(parsedText)
-    else:
-        print("\nRunning INSUFFICIENT DATA path...")
-        parsedText = initialParse + "\n\nAction: Email"
-        sort2Result = callAgent(parsedText)
-        sys.exit("Program Terminated")
-
-    # STEP 4:
-    combinedData = initialParse + "\n\n" + sortResult + "\n\n" + sort2Result
-    parsedText = combinedData + "\n\nAction: Wranggler3"
-    sort3Result = callAgent(parsedText)
-
-    final_result = sort3Result
-
-    
-    print("\n--- Final Agent Response (Step 4 Action) ---")
-    print(final_result)
-    print("\n--- Pipeline Complete ---")
-    sys.exit("Program Terminated")
->>>>>>> main
+    # Run Flask application
+    app.run(debug=True, port=5000, use_reloader=False)
