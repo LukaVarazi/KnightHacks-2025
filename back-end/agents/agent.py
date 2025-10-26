@@ -28,21 +28,6 @@ state_management = Agent(
     """,
 )
 
-record_wrangler = Agent(
-    model='gemini-2.5-flash',
-    name='record_wrangler',
-    description='Gets client data per section and identify what is missing',
-    instruction="""
-    You are an expert data analyzer. Your job is to take the input which is written in 3 sections:
-
-    - EMT Presence
-    - Police Report:
-    - Injury Assessment
-
-    And you will check what is missing from the 
-    """,
-)
-
 client_communication = Agent(
     model='gemini-2.5-flash',
     name='client_communication',
@@ -128,7 +113,7 @@ voice_bot_scheduler = Agent(
 evidence_sorter = Agent(
     model='gemini-2.5-flash',
     name='evidence_sorter',
-    description='Takes all client data and sorts into 3 sections',
+    description='Takes all client data and sorts into 5 sections',
     instruction="""
     You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
 
@@ -299,24 +284,6 @@ agent_coordinator = Agent(
     model='gemini-2.5-flash',
     name='agent_coordinator',
     description='The main agent that oversees sub_agents.',
-    # instruction="""
-    #     You are the Agent Orchestrator, your job is to receive an Legal Case input with an indication of what is needed 
-    #     and decide which sub agent (state_management, record_wrangler, client_communication, legal_researcher,
-    #     voice_bot_scheduler, evidence_sorter) to use.
-
-    #     Here is the criteria you can you to figure out which Agent to use:
-
-    #     The Legal Case input is going to include a keyword at the end formmated like "Action: KEYWORD"
-    #     Note: If the action keyword is not explicitly stated, output the keywords:
-    #         - "Sort" - to transfer the legal case to the "evidence_sorter" sub agent
-    #         - "Sort_Initial" - to transfer the legal case to the "evidence_sorter_initial" sub agent
-    #         - "Wrangle" - to transfer the legal case to the "record_wrangler" sub agent
-
-    #     If:
-    #     1. KEYWORD = "Sort" - you will transfer the legal case to the "evidence_sorter" sub agent (dont include the action keyword)
-    #     2. KEYWORD = "Sort_Initial" - you will transfer the legal case to the "evidence_sorter_initial" sub agent (dont include the action keyword)
-    #     3. KEYWORD = "Wrangle" - you will transfer the legal case to the "record_wrangler" sub agent (dont include the action keyword)
-    #  """,
     instruction="""
 You are the Agent Orchestrator. Your role is to receive a Legal Case input and decide which sub-agent to delegate it to.
 
@@ -359,7 +326,7 @@ respond with:
 "Unable to determine sub-agent. Please include a valid Action keyword (Sort, Sort_Initial, or Wrangle)."
      """,
 
-    sub_agents=[state_management, record_wrangler, client_communication, evidence_sorter_initial,
+    sub_agents=[state_management, client_communication, evidence_sorter_initial,
                 legal_researcher, voice_bot_scheduler, evidence_sorter]
 )
 
