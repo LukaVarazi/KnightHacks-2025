@@ -134,7 +134,20 @@ def call_simple_gemini_api(payload, max_retries=5):
                 time.sleep(wait_time)
             else:
                 raise e
+
     return None
+
+
+def call_gemini(payload):
+    gemini_response = call_simple_gemini_api(payload)
+    generated_text = (
+        gemini_response.get("candidates", [{}])[0]
+        .get("content", {})
+        .get("parts", [{}])[0]
+        .get("text", "")
+    )
+
+    return generated_text
 
 
 def transcribe_audio_bytes(file_bytes: bytes) -> str:
@@ -769,7 +782,7 @@ def run_2() -> List[Dict[str, str]]:
                 "good": False,
             }
         )
-        return pipeline_result_store
+        return pipeline_result_store[-1]
 
     recommendation = find_data_sufficiency(step2_result)
 
@@ -782,7 +795,7 @@ def run_2() -> List[Dict[str, str]]:
             {
                 "step": "2. Evidence Sort 1",
                 "status": status_label,
-                "result": step2_result,
+                "result": prettify_output(step2_result),
                 "good": False,
             }
         )
@@ -794,7 +807,7 @@ def run_2() -> List[Dict[str, str]]:
         {
             "step": "2. Evidence Sort 1",
             "status": "COMPLETE",
-            "result": final_output,
+            "result": prettify_output(final_output),
             "good": True,
         }
     )
@@ -835,11 +848,11 @@ def run_3() -> List[Dict[str, str]]:
             {
                 "step": "3. Evidence Sort 2",
                 "status": "ADK ERROR",
-                "result": step3_result,
+                "result": prettify_output(step3_result),
                 "good": False,
             }
         )
-        return pipeline_result_store
+        return pipeline_result_store[-1]
 
     recommendation = find_data_sufficiency(step3_result)
 
@@ -852,19 +865,19 @@ def run_3() -> List[Dict[str, str]]:
             {
                 "step": "3. Evidence Sort 2",
                 "status": status_label,
-                "result": final_output,
+                "result": prettify_output(final_output),
                 "good": False,
             }
         )
         app.logger.info(f"Pipeline stopped: {status_label}")
-        return pipeline_result_store[-1], 225
+        return pipeline_result_store[-1]
 
     final_output = delimit_output_string(step3_result)
     pipeline_result_store.append(
         {
             "step": "3. Evidence Sort 2",
             "status": "COMPLETE",
-            "result": final_output,
+            "result": prettify_output(final_output),
             "good": True,
         }
     )
@@ -905,73 +918,86 @@ def run_4() -> List[Dict[str, str]]:
             {
                 "step": "4. Final Synthesis",
                 "status": "ADK ERROR",
-                "result": step4_result,
+                "result": prettify_output(step4_result),
                 "good": False,
             }
         )
-        return pipeline_result_store
+        return pipeline_result_store[-1]
 
     final_output = delimit_output_string(step4_result)
+
+    pros = (
+        call_gemini(
+            {
+                "systemInstruction": {
+                    "parts": [
+                        {
+                            "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide and explain your reasoning on why the case SHOULD be taken on"
+                        }
+                    ]
+                },
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": final_output},
+                        ]
+                    }
+                ],
+            }
+        ),
+    )
+
+    cons = (
+        call_gemini(
+            {
+                "systemInstruction": {
+                    "parts": [
+                        {
+                            "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide and explain your reasoning on why the case should NOT be taken on"
+                        }
+                    ]
+                },
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": final_output},
+                        ]
+                    }
+                ],
+            },
+        ),
+    )
+
+    percent = (
+        call_gemini(
+            {
+                "systemInstruction": {
+                    "parts": [
+                        {
+                            "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide on a percentage value from 0-100% to determine the value of the case from a law firm perspective. On the line immediately following write an explanation as to why you decided to rate the case that percentage value"
+                        }
+                    ]
+                },
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": final_output},
+                        ]
+                    }
+                ],
+            }
+        ),
+    )
+
     pipeline_result_store.append(
         {
             "step": "4. Final Synthesis",
             "status": "COMPLETE",
             "result": final_output,
             "good": True,
-            "pros": call_simple_gemini_api(
-                {
-                    "systemInstruction": {
-                        "parts": [
-                            {
-                                "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide and explain your reasoning on why the case SHOULD be taken on"
-                            }
-                        ]
-                    },
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": final_output},
-                            ]
-                        }
-                    ],
-                }
-            ),
-            "cons": call_simple_gemini_api(
-                {
-                    "systemInstruction": {
-                        "parts": [
-                            {
-                                "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide and explain your reasoning on why the case should NOT be taken on"
-                            }
-                        ]
-                    },
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": final_output},
-                            ]
-                        }
-                    ],
-                },
-            ),
-            "percent": call_simple_gemini_api(
-                {
-                    "systemInstruction": {
-                        "parts": [
-                            {
-                                "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide on a percentage value from 0-100% to determine the value of the case from a law firm perspective. On the line immediately following write an explanation as to why you decided to rate the case that percentage value"
-                            }
-                        ]
-                    },
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": final_output},
-                            ]
-                        }
-                    ],
-                }
-            ),
+            "pros": pros,
+            "cons": cons,
+            "percent": percent,
         }
     )
 

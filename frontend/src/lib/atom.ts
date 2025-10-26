@@ -9,7 +9,7 @@ export const needsNewFileAtom = atom((get) => {
   const needed = get(neededFilesAtom);
   return Object.values(needed).every((b) => b);
 });
-export const stepAtom = atom(1);
+export const stepAtom = atom(4);
 
 export const stepOutputsAtom = atom<string[]>(["", "", "", ""]);
 export const loadingDataAtom = atom(false);
@@ -19,7 +19,7 @@ export const reportDataAtom = atom<Record<string, any>>({});
 export const reportStatusAtom = atom("");
 export const reportProstom = atom("");
 export const reportConsAtom = atom("");
-export const reportPercentAtom = atom("")
-export const reportPercentExplanationAtom = atom("")
+export const reportPercentAtom = atom("");
+export const reportPercentExplanationAtom = atom("");
 
 export const currentTabAtom = atom<string>("emt");
