@@ -5,21 +5,24 @@ import time
 import re
 import io
 import base64
-from threading import Thread # Required for running Flask in background (optional, but good practice)
 from flask import Flask, request, jsonify
 from pypdf import PdfReader 
+from typing import Tuple, Optional
 
 # --- Configuration ---
+# !!! IMPORTANT: You MUST set your actual Gemini API Key here or use environment variables !!!
 GEMINI_API_KEY = "AIzaSyDLMUtIu-Bg0qykFwX-6p3-ST5JuWOOEm4" 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
 NATIVE_TEXT_THRESHOLD = 50 
 
 app = Flask(__name__)
+# Now stores both the extracted text and the optional transcript
 extracted_text_store = "No documents analyzed yet."
 
 # Function to handle API requests with exponential backoff
 def call_gemini_api(payload, max_retries=5):
     """Handles API request and implements exponential backoff for reliability."""
+    # ... (function remains unchanged) ...
     for attempt in range(max_retries):
         try:
             headers = {'Content-Type': 'application/json'}
@@ -37,8 +40,42 @@ def call_gemini_api(payload, max_retries=5):
                 raise e
     return None
 
-# --- Core Parsing Logic Extracted into a Function ---
-def parse_pdf_bytes(file_bytes):
+# --- NEW: M4A Transcription Function ---
+def transcribe_audio_bytes(file_bytes: bytes) -> str:
+    """Uses Gemini to transcribe an M4A audio file."""
+    if not GEMINI_API_KEY:
+        raise ValueError("Gemini API Key is not configured for audio transcription.")
+        
+    encoded_audio = base64.b64encode(file_bytes).decode('utf-8')
+    
+    system_prompt = (
+        "You are an expert transcriber. Transcribe the audio precisely. "
+        "Do not add any analysis or introductory remarks. "
+        "Format the output clearly, including speaker identification if possible."
+    )
+    
+    payload = {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": [
+            {"parts": [
+                # Pass audio data with the correct MIME type
+                {"inlineData": {"mimeType": "audio/m4a", "data": encoded_audio}},
+                {"text": "Transcribe the audio provided."}
+            ]}
+        ]
+    }
+
+    gemini_response = call_gemini_api(payload)
+    generated_text = gemini_response.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+    
+    if not generated_text:
+        raise Exception("Gemini returned an empty transcription response.")
+        
+    return generated_text
+
+# --- Refactored PDF Parsing Logic ---
+def parse_pdf_bytes(file_bytes: bytes) -> str:
+    # ... (function body remains identical to previous version) ...
     """
     Core logic to parse PDF bytes, falling back to Gemini for OCR.
     Returns the extracted string or raises an exception on failure.
@@ -96,48 +133,57 @@ def parse_pdf_bytes(file_bytes):
 
     print(f"Extraction Source: {source}")
     return extracted_content
+    
 
-# --- Flask Endpoints (Mostly Unchanged) ---
-@app.route('/', methods=['GET'])
-def index():
-    """Serves a basic API status message."""
-    return jsonify({
-        "status": "API is operational (Hybrid PDF/Image Analyzer)",
-        "message": "Send a POST request to /upload_pdf with a file named 'pdf_file' to begin analysis.",
-        "last_text_preview": extracted_text_store[:80] + "..." if len(extracted_text_store) > 80 else extracted_text_store
-    }), 200
-
-@app.route('/upload_pdf', methods=['POST'])
-def upload_pdf():
+# --- Updated Flask Endpoint ---
+# Now handles two optional files
+@app.route('/upload_data', methods=['POST'])
+def upload_data():
     global extracted_text_store
-
-    if 'pdf_file' not in request.files:
-        return jsonify({"error": "Missing file: Expecting a file named 'pdf_file' in the form data."}), 400
+    pdf_file = request.files.get('pdf_file')
+    audio_file = request.files.get('audio_file')
     
-    file = request.files['pdf_file']
-    if not file.filename.lower().endswith('.pdf'):
-        return jsonify({"error": "Invalid file type. Please upload a PDF."}), 400
+    if not pdf_file and not audio_file:
+        return jsonify({"error": "Missing files: Expecting 'pdf_file' or 'audio_file'."}), 400
 
-    file_bytes = file.read()
+    combined_content = []
+    source = []
+
+    # Process PDF
+    if pdf_file and pdf_file.filename.lower().endswith('.pdf'):
+        try:
+            pdf_bytes = pdf_file.read()
+            pdf_content = parse_pdf_bytes(pdf_bytes)
+            combined_content.append(f"--- DOCUMENT ANALYSIS ---\n{pdf_content}")
+            source.append("PDF/Image")
+        except Exception as e:
+            app.logger.error(f"Error during PDF processing: {e}")
+            return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 500
     
-    try:
-        extracted_content = parse_pdf_bytes(file_bytes)
-        source = "Gemini/pypdf" # Simplified source for the API response after refactoring
-    except Exception as e:
-        app.logger.error(f"Error during PDF processing: {e}")
-        return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 500
+    # Process M4A
+    if audio_file and audio_file.filename.lower().endswith('.m4a'):
+        try:
+            audio_bytes = audio_file.read()
+            audio_transcript = transcribe_audio_bytes(audio_bytes)
+            combined_content.append(f"--- CALL TRANSCRIPT ---\n{audio_transcript}")
+            source.append("Audio Transcription")
+        except Exception as e:
+            app.logger.error(f"Error during audio processing: {e}")
+            return jsonify({"error": f"Failed to transcribe audio: {str(e)}"}), 500
 
+    # Combine all results into a single string for the agent
+    final_content = "\n\n".join(combined_content)
+    
     # Store the final parsed string globally
-    extracted_text_store = extracted_content
+    extracted_text_store = final_content
     
     return jsonify({
         "status": "success",
-        "extraction_source": source,
-        "message": f"Text and image analysis completed successfully via {source}.",
-        "extracted_content_string": extracted_content, 
-        "character_count": len(extracted_content),
+        "extraction_source": " & ".join(source),
+        "message": "Data processing completed successfully.",
+        "extracted_content_string": final_content, 
+        "character_count": len(final_content),
     }), 200
-
 
 
 #======================================================
@@ -149,7 +195,7 @@ USER_ID = "user1"
 SESSION_ID = "s_123"
 
 #======================
-# FUNCTIONS
+# FUNCTIONS (Unchanged from previous version)
 #======================
 def ensure_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
     """Create session if it doesn't exist"""
@@ -160,7 +206,7 @@ def ensure_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
     )
     if resp.status_code in (200, 201):
         print("Session ready.")
-    elif resp.status_code == 409:  # Session already exists
+    elif resp.status_code == 409:
         print("Session already exists.")
     else:
         raise Exception(f"Failed to create session: {resp.status_code} {resp.text}")
@@ -169,7 +215,7 @@ def ensure_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
 def callAgent(prompt: str, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID):
     """Send prompt to ADK agent and return final string"""
     ensure_session(app_name, user_id, session_id)
-
+    # ... (omitted payload/response logic, identical to previous version) ...
     payload = {
         "app_name": app_name,
         "user_id": user_id,
@@ -201,7 +247,6 @@ def find_recommendation(text):
         "REJECT DATA": "REJECT",
         "INCOMPLETE DATA": "INSUFFICIENT DATA"
     }
-
     pattern = r'RECOMMENDATION:\s*(ACCEPT DATA|REJECT DATA|INCOMPLETE DATA)'
     match = re.search(pattern, text)
     
@@ -213,33 +258,56 @@ def find_recommendation(text):
 # RUN AGENT
 #======================
 if __name__ == "__main__":
-    # NOTE: You MUST have a file named 'test_document.pdf' in the same directory
-    # for this test to succeed.
-    TEST_FILE_PATH = "testt.pdf"
     
-    # We will run the parsing logic directly to get the required string.
+    # 🛑 CRITICAL: Flask server remains commented out for direct pipeline execution.
+    # app.run(host='127.0.0.1', port=5000, debug=True)
+
+    PDF_FILE = "testt.pdf"
+    AUDIO_FILE = "first.m4a" # <--- New file to load
+    
+    combined_content = []
+
+    # 1. Generate the PDF parse string
     try:
-        with open(TEST_FILE_PATH, 'rb') as f:
+        with open(PDF_FILE, 'rb') as f:
             pdf_bytes = f.read()
         
-        print(f"--- Attempting to Parse PDF: {TEST_FILE_PATH} ---")
-        initialParse = parse_pdf_bytes(pdf_bytes)
-        
-        print("\n--- Parsed Text Preview ---")
-        print(initialParse[:200] + "..." if len(initialParse) > 200 else initialParse)
+        print(f"--- Attempting to Parse PDF: {PDF_FILE} ---")
+        pdf_parse = parse_pdf_bytes(pdf_bytes)
+        combined_content.append(f"--- DOCUMENT ANALYSIS ---\n{pdf_parse}")
 
     except FileNotFoundError:
-        print(f"🚨 ERROR: Test file '{TEST_FILE_PATH}' not found.")
-        print("Please create a PDF file with that name to run the agent pipeline.")
-        exit()
+        print(f"🚨 WARNING: PDF file '{PDF_FILE}' not found. Skipping PDF analysis.")
     except Exception as e:
         print(f"🚨 ERROR during PDF parsing: {e}")
         exit()
-    
-    #======================
-    # AGENT PIPELINE
-    #======================
 
+    # 2. Generate the M4A transcription string
+    try:
+        with open(AUDIO_FILE, 'rb') as f:
+            audio_bytes = f.read()
+            
+        print(f"\n--- Attempting to Transcribe Audio: {AUDIO_FILE} ---")
+        audio_transcript = transcribe_audio_bytes(audio_bytes)
+        combined_content.append(f"--- CALL TRANSCRIPT ---\n{audio_transcript}")
+        
+    except FileNotFoundError:
+        print(f"🚨 WARNING: Audio file '{AUDIO_FILE}' not found. Skipping audio transcription.")
+    except Exception as e:
+        print(f"🚨 ERROR during audio transcription: {e}")
+        # Decide if you want to exit here or continue with just the PDF text
+
+    # Final combined text
+    if not combined_content:
+        print("🚨 ERROR: No data (PDF or Audio) was successfully loaded. Exiting.")
+        exit()
+
+    initialParse = "\n\n".join(combined_content)
+    
+    print("\n--- Combined Text Preview ---")
+    print(initialParse[:200] + "..." if len(initialParse) > 200 else initialParse)
+
+    # 3. AGENT PIPELINE Execution (Unchanged)
     print("\n--- Starting Agent Pipeline ---")
 
     # STEP 1: Check and Sort Data
@@ -266,6 +334,3 @@ if __name__ == "__main__":
     print("\n--- Final Agent Response (Step 2 Action) ---")
     print(final_result)
     print("\n--- Pipeline Complete ---")
-
-    # Optional: Run Flask server in a separate thread if needed for API testing later
-    # Thread(target=lambda: app.run(host='127.0.0.1', port=5000)).start()
