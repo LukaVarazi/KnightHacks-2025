@@ -26,4 +26,4 @@ EXPOSE 8000
 
 # Run app.py when the container launches
 # Using ["python", "app.py"] is the preferred 'exec' form
-CMD ["python", "app.py"]
+CMD ["python", "app.py", "--host=0.0.0.0"]
