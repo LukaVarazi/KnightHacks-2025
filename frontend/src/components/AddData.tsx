@@ -19,13 +19,22 @@ export default function AddData() {
       <Tabs defaultValue="emt" className="size-full">
         <TabsList className="w-full flex items-center">
           <TabsTrigger value="emt">EMT / Ambulance</TabsTrigger>
-          <TabsTrigger disabled={step <= 2} value="medical">
+          <TabsTrigger
+            // disabled={step <= 2}
+            value="medical"
+          >
             Medical Records
           </TabsTrigger>
-          <TabsTrigger disabled={step <= 3} value="insurance">
+          <TabsTrigger
+            // disabled={step <= 3}
+            value="insurance"
+          >
             Insurnace Policy
           </TabsTrigger>
-          <TabsTrigger disabled={step <= 4} value="report">
+          <TabsTrigger
+            // disabled={step <= 4}
+            value="report"
+          >
             Report
           </TabsTrigger>
         </TabsList>

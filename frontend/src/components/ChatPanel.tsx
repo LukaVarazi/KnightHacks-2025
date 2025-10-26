@@ -14,7 +14,6 @@ import { useContext } from "react";
 import { stepOutputsAtom } from "~/lib/atom";
 import StepContext from "~/lib/context";
 import { Response } from "#/ui/shadcn-io/ai/response";
-import { ScrollArea } from "./ui/scroll-area";
 
 export default function ChatPanel() {
   const step = useContext(StepContext);

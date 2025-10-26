@@ -7,7 +7,6 @@ import {
   stepAtom,
   stepOutputsAtom,
 } from "~/lib/atom";
-import { delay } from "es-toolkit";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
@@ -68,7 +67,8 @@ async function apiReq(step: number, files: File[]): Promise<[string, boolean]> {
     body: formData,
   });
 
-  const text = await res.text();
+  const data: Record<string, string> = await res.json();
+  const text = data.result;
   if (!res.ok) {
     console.error(text);
     return [text, false];

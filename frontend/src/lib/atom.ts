@@ -13,38 +13,44 @@ export const stepAtom = atom(1);
 
 export const stepOutputsAtom = atom<string[]>([
   `
-Output for Stage 1 - Insufficient Data Case:
+EMT PRESENCE:
+data not provided
 
-EMT PRESENCE: Client arrived at the hospital by ambulance. EMT was present at the scene.
+POLICE REPORT:
+The accident was reported to the police, as indicated by the presence of a "POLICE REPORT (1).pdf". The police report is explicitly mentioned. Who was determined at fault is not stated.
 
-POLICE REPORT: The accident was reported to police, and a police report is implied to exist, though not fully provided to the client. The other driver was determined at fault.
+INJURY ASSESSMENT:
+data not provided
 
-INJURY ASSESSMENT: No scans were performed (MRI, X-ray, CT, brain scan) based on the provided data. The type of injury is whiplash, resulting from an auto accident, and back pain was also mentioned. The client did not lose consciousness. The pain level (0-10) is data not provided. Treatment began the same day as the accident. No surgeries, broken bones, or additional findings are mentioned.
+COVERAGE:
+The client has auto insurance coverage with Progressive American Insurance Company and GEICO. Progressive's contact person is Manuel Martinez (Phone: 1-407-949-3712, 1-800-PROGRESSIVE, Fax: 1-407-618-8805). GEICO's adjuster is Dennis Tamisin. A policy number is not explicitly provided. The request for a PIP log indicates Personal Injury Protection coverage.
 
-COVERAGE: The client has auto insurance coverage through Geico, policy number 4589-GH33.
+LOCATION:
+The accident occurred in Jacksonville, FL, on April 13, 2019. The specific time of the accident and the precise address or intersection are not provided.
 
-LOCATION: The accident occurred last Friday around 4 PM near NW 27th Ave, Miami.
+DEFENDANT INFORMATION:
+data not provided
 
-DEFENDANT INFORMATION: data not provided
-
-RECOMMENDATION: INSUFFICIENT DATA Subject: Follow-up Required: Missing Information for Your Case
+RECOMMENDATION: INSUFFICIENT DATA
+Subject: Request for Missing Information - Case Regarding April 13, 2019 Incident
 
 Dear Client,
 
-Thank you for providing the initial details regarding your car accident. We have begun organizing the information, and to ensure we can proceed effectively, we require some additional details.
+We are currently reviewing the documentation provided for your case related to the incident on April 13, 2019. To ensure a thorough and complete assessment, we require some additional information.
 
-The following information is currently missing from your case file:
+The following details are currently missing from the provided records:
 
-Injury Assessment: We need to know your pain level on a scale of 0-10, whether any scans were performed (MRI, X-ray, CT, brain scan), if you lost consciousness, or if there were any surgeries, broken bones, or additional findings from your medical examination.
-Defendant Information: We need the name and contact information of the other driver involved in the accident, or their relationship to you.
-Location: While you mentioned "last Friday," providing the exact date of the accident would be helpful.
-Please provide these details at your earliest convenience. This will allow us to complete the initial assessment and move forward with your case.
+*   **EMT Presence**: Information regarding how you arrived at the hospital (e.g., by ambulance or personal vehicle) and whether EMT personnel were present at the scene.
+*   **Injury Assessment**: Specifics about your injuries, including any scans performed (MRI, X-ray, CT, brain scan), the type of injury, if you lost consciousness, your pain level (0-10), when your treatment began, and details about any surgeries, broken bones, or additional medical findings.
+*   **Defendant Information**: The name and any available contact information for the defendant, or their relationship to you.
 
-Thank you for your cooperation.
+Please provide these details at your earliest convenience. This information is crucial for the proper evaluation and advancement of your claim.
+
+Thank you for your prompt attention to this matter.
 
 Sincerely,
 
-Your Legal Team
+Morgan and Morgan Legal Team
 
 `,
   "",
