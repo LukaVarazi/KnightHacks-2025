@@ -14,7 +14,7 @@ services:
       context: back-end
       dockerfile: Dockerfile
     ports:
-      - "9999:80"
+      - "9999:5000"
     restart: always
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
