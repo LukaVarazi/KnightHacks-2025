@@ -242,7 +242,7 @@ def prettify_output(string: str) -> str:
     if not GEMINI_API_KEY:
         raise ValueError("Gemini API Key is not configured.")
 
-    system_prompt = "You are an expert plain text to markdown converter. Convert and format the plain text as markdown for user convenience and readability. DO NOT CHANCE TEXT CONTENT."
+    system_prompt = "You are an expert plain text to markdown converter. Convert and format the plain text as markdown for user convenience and readability. DO NOT CHANCE TEXT CONTENT and DO NOT MAKE COMMENTS, do your job and keep quiet."
 
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
