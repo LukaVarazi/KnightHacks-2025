@@ -50,7 +50,7 @@ export default function Continue() {
         e.stopPropagation();
         onClick();
       }}
-      variant="default"
+      variant="destructive"
     >
       Continue analysis
     </Button>

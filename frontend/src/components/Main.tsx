@@ -1,8 +1,6 @@
 import { Navbar01 } from "#/ui/shadcn-io/navbar-01";
 import AddData from "./AddData";
-import FileUpload from "./FileUpload";
 import LoadingOverlay from "./LoadingOverlay";
-import MissingFiles from "./MissingFiles";
 
 export default function Main() {
   return (

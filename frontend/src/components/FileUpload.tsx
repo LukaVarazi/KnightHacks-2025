@@ -51,7 +51,7 @@ function FilesPreview() {
 
   return (
     <div className="flex flex-col gap-5 h-full w-full">
-      <h1 className="text-2xl">Tender 🍗 files to analyze</h1>
+      <h1 className="text-2xl">🗃️ Tender files to analyze</h1>
 
       <Separator className="" orientation="horizontal" />
 
@@ -91,8 +91,7 @@ function FilePreview({ file, i }: { file: File; i: number }) {
       <span className="text-md overflow-x-auto">{file.name}</span>
 
       <Button
-        variant="destructive"
-        className="ml-auto"
+        className="ml-auto bg-red-400 text-white"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

@@ -49,15 +49,15 @@ export default function AddData() {
 function ResizablePortion({ step }: { step: number }) {
   return (
     <StepContext.Provider value={step}>
-      <ResizablePanelGroup direction="vertical" className="rounded-lg border">
-        <ResizablePanel defaultSize={0}>
-          <ChatPanel />
+      <ResizablePanelGroup direction="horizontal" className="rounded-lg border">
+        <ResizablePanel defaultSize={100}>
+          <FileUpload />
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
-        <ResizablePanel defaultSize={100}>
-          <FileUpload />
+        <ResizablePanel defaultSize={0}>
+          <ChatPanel />
         </ResizablePanel>
       </ResizablePanelGroup>
     </StepContext.Provider>

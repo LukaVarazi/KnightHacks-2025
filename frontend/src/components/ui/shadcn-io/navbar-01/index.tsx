@@ -211,9 +211,11 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
                 onClick={(e) => e.preventDefault()}
                 className="flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors cursor-pointer"
               >
-                <div className="text-2xl">{logo}</div>
-                <span className="hidden font-bold text-xl sm:inline-block">
-                  tenderly
+                <div className="text-2xl">
+                  <img src="/logo.png" width={30} height={30} />
+                </div>
+                <span className="hidden font-bold text-xl sm:inline-block text-destructive">
+                  Morganizer
                 </span>
               </button>
               {/* Navigation menu */}
