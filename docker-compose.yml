@@ -6,8 +6,6 @@ services:
     ports:
       - "9998:80"
     restart: always
-    environment:
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
 
   backend:
     build:
@@ -18,12 +16,13 @@ services:
     restart: always
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ADK_API_URL=${ADK_API_URL}
 
   agent:
     build:
       context: back-end
       dockerfile: Dockerfile
     restart: always
-    command: ["adk", "api_server"]
+    command: ["python", "-m", "adk", "api_server"]
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}

@@ -26,7 +26,7 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini
 NATIVE_TEXT_THRESHOLD = 50
 
 # Agent Development Kit (ADK) Configuration
-API_URL = "http://127.0.0.1:8000"  # ADK Server URL
+API_URL = os.environ.get("ADK_API_URL", "http://127.0.0.1:8000")
 
 # CRITICAL FIX: APP_NAME must match the root agent's name defined in agent.py
 # The root agent name is 'agent_coordinator'.
