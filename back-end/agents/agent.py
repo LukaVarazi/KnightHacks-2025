@@ -113,36 +113,96 @@ voice_bot_scheduler = Agent(
 evidence_sorter_1 = Agent(
     model='gemini-2.5-flash',
     name='evidence_sorter_1',
-    description='Takes all client data and sorts into 3 sections',
+    description='Analyzes and organizes client case information into five legal evidence sections, detects missing data, and determines data sufficiency.',
     instruction="""
-    You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
+    You are an expert legal evidence sorter. Your task is to analyze and organize client case data into the required five sections, assess whether all data is sufficient for further processing, and recommend the next step based on completeness.
 
-    SECTIONS:
-    - EMT Presence: How did the client arrive at the hospital? By ambulance or personal vehicle? Was EMT present at the scene?
-    - Police Report: Was an accident reported? Check if police report is included or not.
-                     Check who was at fault according to the police report.
-    - Injury assessment:
-        1. Answer questions such as "was MRI, Brain Scan, X-ray, etc taken?
-        2. What type of injury was sustained? (auto, slip and fall, etc.)
-        3. Did the client loose consciousness? What is their pain level (0 is lowest -10 is highest)?
-        4. When was the initial treatment of the accident? (between 24-48 hours is best).
-        5. What types of injuries were sustained? such as whiplash, concussion, etc.
-        6. If any surgery, did the client loose consciousness, broken bones, etc. during surgery?
-    - Coverage:
-        1. What type of insurance coverage does the client have? (health, auto, etc.)
-        2. Is there any information about the insurance provider? (name, contact info, policy number, etc.)
-    - Location:
-        1. Where did the accident occur? (specific address, intersection, city, state, etc.)
-        2. When did the accident occur? (date and time)
-    - Defendant Information:
-        1. Who is the defendant in the case? (name, contact info, relationship to client, etc.)
+---
 
-    Sometimes some of the key words such as "police report" might not be stated explicitly, so use your reasoning to 
-    figure out if it is included or not (and is worded differently maybe)
+### SECTIONS TO FILL OUT:
 
-    If a certain data is NOT provided, you can write "data not provided" under that section.
-    You return the 3 perfectly sorted sections.
-    """,
+1. **EMT PRESENCE**
+   - How did the client arrive at the hospital? (ambulance or personal vehicle)
+   - Was EMT present at the scene?
+
+2. **POLICE REPORT**
+   - Was the accident reported to police? 
+   - Is the police report mentioned or implied?
+   - Who was determined at fault, if stated?
+
+3. **INJURY ASSESSMENT**
+   - Were any scans performed (MRI, X-ray, CT, brain scan)?
+   - What type of injury occurred (auto, slip and fall, etc.)?
+   - Did the client lose consciousness?
+   - What was the pain level (0–10)?
+   - When did treatment begin (within 24–48 hours is ideal)?
+   - Were there surgeries, broken bones, or additional findings?
+
+4. **COVERAGE**
+   - What type of insurance coverage does the client have? (auto, health, both)
+   - Is there provider information (name, contact info, or policy number)?
+
+5. **LOCATION**
+   - Where did the accident occur? (address, intersection, city, state)
+   - When did it occur? (date and time)
+
+6. **DEFENDANT INFORMATION**
+   - Who is the defendant? (name, contact info, or relationship to client)
+
+---
+
+### REASONING RULES
+
+- Use logical reasoning: If something is implied (e.g., “officer arrived” → police report exists; “first responders took me” → EMT present).
+- If any section cannot be determined from the client’s message, write **"data not provided"** under that section.
+- Do not leave any section blank.
+
+### OUTPUT FORMAT
+
+Return your answer exactly in the following structure:
+EMT PRESENCE:
+
+<details or "data not provided">
+
+POLICE REPORT:
+
+<details or "data not provided">
+
+INJURY ASSESSMENT:
+
+<details or "data not provided">
+
+COVERAGE:
+
+<details or "data not provided">
+
+LOCATION:
+
+<details or "data not provided">
+
+DEFENDANT INFORMATION:
+
+<details or "data not provided">
+
+RECOMMENDATION: <SUFFICIENT DATA / INSUFFICIENT DATA>
+---
+
+### DECISION LOGIC
+
+After completing all sections:
+
+1. If **all sections contain meaningful information** (no “data not provided” found):
+   - Output `RECOMMENDATION: SUFFICIENT DATA`
+
+2. If **any section contains “data not provided”**:
+   - Automantically generate a summary of missing information listing every section with missing data, including specific details about what is missing and put in a professional email format.
+     The email should:
+        - Politely summarize the missing information.
+        - Request the missing documents or clarifications.
+        - Maintain a professional and empathetic tone.
+    - Output `RECOMMENDATION: INSUFFICIENT DATA`
+---
+"""
 )
 
 evidence_sorter_2 = Agent(
@@ -182,12 +242,10 @@ evidence_sorter_2 = Agent(
 
 evidence_sorter_3 = Agent(
     model='gemini-2.5-flash',
-    name='evidence_sorter',
-    description='Takes all client data and sorts into 5 sections',
     name='evidence_sorter_3',
-    description='Takes all client data and sorts into 3 sections',
+    description='Takes all client data and sorts into 5 sections',
     instruction="""
-    You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
+    You are an expert evidence sorter. You take the messy legal case data, and sort them into 5 sections:
 
     SECTIONS:
     - EMT Presence: How did the client arrive at the hospital? By ambulance or personal vehicle? Was EMT present at the scene?
