@@ -254,6 +254,19 @@ def find_recommendation(text):
         return mapping.get(match.group(1), None) 
     return None 
 
+def find_data(text):
+    """Finds and maps the specific recommendation phrase from the agent's text."""
+    mapping = {
+        "SUFFICIENT DATA": "SUFFICIENT DATA",
+        "MISSING DATA": "INSUFFICIENT DATA",
+    }
+    pattern = r'RECOMMENDATION:\s*(SUFFICIENT DATA|INSUFFICIENT DATA)'
+    match = re.search(pattern, text)
+    
+    if match:
+        return mapping.get(match.group(1), None) 
+    return None 
+
 #======================
 # RUN AGENT
 #======================
@@ -313,24 +326,46 @@ if __name__ == "__main__":
     # STEP 1: Check and Sort Data
     parsedText = initialParse + "\n\nAction: Sort_Initial"
     print(f"\nCalling Agent with Action: Sort_Initial...")
-    result = callAgent(parsedText)
+    sortInitialResult = callAgent(parsedText)
     print("--- Agent Response (Sort_Initial) ---")
-    print(result)
+    print(sortInitialResult)
 
-    recommendation = find_recommendation(result)
+    recommendation = find_recommendation(sortInitialResult)
     print(f"\nExtracted Recommendation: {recommendation}")
 
-    final_result = ""
+    sortResult = ""
     if recommendation == "ACCEPT":
         # STEP 2: Ensure No Files are Missing
         print("\nRunning ACCEPT path...")
         parsedText = initialParse + "\n\nAction: Sort"
-        final_result = callAgent(parsedText)
+        sortResult = callAgent(parsedText)
     else:
         print("\nRunning REJECT/INSUFFICIENT path...")
         parsedText = initialParse + "\n\nAction: Email"
-        final_result = callAgent(parsedText)
+        sortResult = callAgent(parsedText)
 
-    print("\n--- Final Agent Response (Step 2 Action) ---")
+    dataSufficiency = find_data(sortResult)
+    print(f"\nExtracted Data Sufficiency: {dataSufficiency}")
+
+    sort2Result = ""
+    if dataSufficiency == "SUFFICIENT DATA":
+        # STEP 3:
+        print("\nRunning SUFFICIENT path...")
+        parsedText = initialParse + "\n\nAction: Wranggler2"
+        sort2Result = callAgent(parsedText)
+    else:
+        print("\nRunning REJECT/INSUFFICIENT path...")
+        parsedText = initialParse + "\n\nAction: Email"
+        sort2Result = callAgent(parsedText)
+
+    # STEP 4:
+    combinedData = initialParse + "\n\n" + sortResult + "\n\n" + sort2Result
+    parsedText = combinedData + "\n\nAction: Wranggler3"
+    sort3Result = callAgent(parsedText)
+
+    final_result = sort3Result
+
+    
+    print("\n--- Final Agent Response (Step 4 Action) ---")
     print(final_result)
     print("\n--- Pipeline Complete ---")
