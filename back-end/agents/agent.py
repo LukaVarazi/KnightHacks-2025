@@ -28,21 +28,6 @@ state_management = Agent(
     """,
 )
 
-record_wrangler = Agent(
-    model='gemini-2.5-flash',
-    name='record_wrangler',
-    description='Gets client data per section and identify what is missing',
-    instruction="""
-    You are an expert data analyzer. Your job is to take the input which is written in 3 sections:
-
-    - EMT Presence
-    - Police Report:
-    - Injury Assessment
-
-    And you will check what is missing from the 
-    """,
-)
-
 client_communication = Agent(
     model='gemini-2.5-flash',
     name='client_communication',
@@ -197,6 +182,8 @@ evidence_sorter_2 = Agent(
 
 evidence_sorter_3 = Agent(
     model='gemini-2.5-flash',
+    name='evidence_sorter',
+    description='Takes all client data and sorts into 5 sections',
     name='evidence_sorter_3',
     description='Takes all client data and sorts into 3 sections',
     instruction="""
@@ -417,7 +404,7 @@ respond with:
 "Unable to determine sub-agent. Please include a valid Action keyword (Sort, Sort_Initial, or Wrangle)."
      """,
 
-    sub_agents=[state_management, record_wrangler, client_communication, evidence_sorter_initial,
+    sub_agents=[state_management, client_communication, evidence_sorter_initial,
                 legal_researcher, voice_bot_scheduler, evidence_sorter_1, evidence_sorter_2, evidence_sorter_3]
 )
 
