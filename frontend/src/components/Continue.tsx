@@ -7,35 +7,40 @@ import {
   stepAtom,
   stepOutputsAtom,
 } from "~/lib/atom";
+import { useContext } from "react";
+import StepContext from "~/lib/context";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
 export default function Continue() {
   const setStepOutputs = useSetAtom(stepOutputsAtom);
+  const trueStep = useContext(StepContext);
   const [step, setStep] = useAtom(stepAtom);
-  const files = useAtomValue(filesAtom);
+  const [files, setFiles] = useAtom(filesAtom);
   const setLoadingDataAtom = useSetAtom(loadingDataAtom);
 
   const onClick = async () => {
     setLoadingDataAtom(true);
 
-    const [text, ok] = await apiReq(step, files);
+    const [text, ok] = await apiReq(trueStep, files);
 
     setLoadingDataAtom(false);
 
     if (!ok) {
       toast.warning(
-        "Missing files for analysis, read AI feedback and add needed files to continue!"
+        "Missing files for analysis, read AI feedback and add needed files to continue!\n You may use the skip case button to continue anyways"
       );
     } // We good
     else {
+      // setFiles([]);
       setStep((prev) => prev + 1);
+      toast.success("Analysis complete!");
     }
 
     setStepOutputs((prev) => {
       const copy = [...prev];
 
-      copy[step - 1] = text;
+      copy[trueStep - 1] = text;
       return copy;
     });
   };
@@ -69,7 +74,7 @@ async function apiReq(step: number, files: File[]): Promise<[string, boolean]> {
 
   const data: Record<string, string> = await res.json();
   const text = data.result;
-  if (!res.ok) {
+  if (!data.good) {
     console.error(text);
     return [text, false];
   }

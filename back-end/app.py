@@ -11,6 +11,7 @@ from flask import Flask, request, jsonify
 from pypdf import PdfReader
 from typing import Tuple, Optional, List, Dict, Any
 import sys
+from flask_cors import CORS
 
 from util import nuke_files, save_files
 
@@ -19,7 +20,7 @@ from util import nuke_files, save_files
 GEMINI_API_KEY = os.environ.get(
     "GEMINI_API_KEY", "AIzaSyDLMUtIu-Bg0qykFwX-6p3-ST5JuWOOEm4"
 )
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2255:generateContent"
 NATIVE_TEXT_THRESHOLD = 50
 
 # Agent Development Kit (ADK) Configuration
@@ -38,6 +39,7 @@ DATA_FOLDER = "./media"
 pipeline_result_store: List[Dict[str, str]] = []
 
 app = Flask(__name__)
+CORS(app)  # gets rid of dumb reasonable security
 
 file_context = ""
 
@@ -49,6 +51,8 @@ def delimit_output_string(output_text: str) -> str:
     Separates values by placing a 'thinking face' emoji (🤔) next to a simplified
     set of keywords and patterns for frontend delimiting.
     """
+    return output_text
+
     DELIMITER_EMOJI = " 🤔"
 
     # 1. 'approved' (Case-insensitive)
@@ -603,9 +607,14 @@ def run_1() -> List[Dict[str, str]]:
 
     if "ERROR:" in initial_data or "WARNING:" in initial_data:
         pipeline_result_store.append(
-            {"step": "0. Ingestion", "status": "ERROR", "result": initial_data}
+            {
+                "step": "0. Ingestion",
+                "status": "ERROR",
+                "result": initial_data,
+                "good": False,
+            }
         )
-        return pipeline_result_store[-1], 400
+        return pipeline_result_store[-1]
 
     # 2. STEP 1: Initial Case Acceptance/Rejection
     app.logger.info(
@@ -623,7 +632,12 @@ def run_1() -> List[Dict[str, str]]:
 
     if status != 200:
         pipeline_result_store.append(
-            {"step": "1. Initial Review", "status": "ADK ERROR", "result": step1_result}
+            {
+                "step": "1. Initial Review",
+                "status": "ADK ERROR",
+                "result": step1_result,
+                "good": False,
+            }
         )
         return pipeline_result_store
 
@@ -640,10 +654,11 @@ def run_1() -> List[Dict[str, str]]:
                 "step": "1. Initial Review",
                 "status": status_label,
                 "result": final_output,
+                "good": False,
             }
         )
         app.logger.info(f"Pipeline stopped: {status_label}")
-        return pipeline_result_store[-1], 400
+        return pipeline_result_store[-1]
 
     final_output = step1_result
     pipeline_result_store.append(
@@ -651,6 +666,7 @@ def run_1() -> List[Dict[str, str]]:
             "step": "1. Initial Review",
             "status": "ACCEPTED/SUFFICIENT",
             "result": final_output,
+            "good": True,
         }
     )
 
@@ -695,6 +711,7 @@ def run_2() -> List[Dict[str, str]]:
                 "step": "2. Evidence Sort 1",
                 "status": "ADK ERROR",
                 "result": step2_result,
+                "good": False,
             }
         )
         return pipeline_result_store
@@ -711,14 +728,20 @@ def run_2() -> List[Dict[str, str]]:
                 "step": "2. Evidence Sort 1",
                 "status": status_label,
                 "result": step2_result,
+                "good": False,
             }
         )
         app.logger.info(f"Pipeline stopped: {status_label}")
-        return pipeline_result_store[-1], 400
+        return pipeline_result_store[-1]
 
     final_output = delimit_output_string(step2_result)
     pipeline_result_store.append(
-        {"step": "2. Evidence Sort 1", "status": "COMPLETE", "result": final_output}
+        {
+            "step": "2. Evidence Sort 1",
+            "status": "COMPLETE",
+            "result": final_output,
+            "good": True,
+        }
     )
     previous_step_summary = final_output
 
@@ -758,6 +781,7 @@ def run_3() -> List[Dict[str, str]]:
                 "step": "3. Evidence Sort 2",
                 "status": "ADK ERROR",
                 "result": step3_result,
+                "good": False,
             }
         )
         return pipeline_result_store
@@ -774,14 +798,20 @@ def run_3() -> List[Dict[str, str]]:
                 "step": "3. Evidence Sort 2",
                 "status": status_label,
                 "result": final_output,
+                "good": False,
             }
         )
         app.logger.info(f"Pipeline stopped: {status_label}")
-        return pipeline_result_store[-1], 400
+        return pipeline_result_store[-1], 225
 
     final_output = delimit_output_string(step3_result)
     pipeline_result_store.append(
-        {"step": "3. Evidence Sort 2", "status": "COMPLETE", "result": final_output}
+        {
+            "step": "3. Evidence Sort 2",
+            "status": "COMPLETE",
+            "result": final_output,
+            "good": True,
+        }
     )
     previous_step_summary = final_output
 
@@ -821,6 +851,7 @@ def run_4() -> List[Dict[str, str]]:
                 "step": "4. Final Synthesis",
                 "status": "ADK ERROR",
                 "result": step4_result,
+                "good": False,
             }
         )
         return pipeline_result_store
@@ -836,14 +867,20 @@ def run_4() -> List[Dict[str, str]]:
                 "step": "4. Final Synthesis",
                 "status": status_label,
                 "result": final_output,
+                "good": False,
             }
         )
         app.logger.info(f"Pipeline stopped: {status_label}")
-        return pipeline_result_store[-1], 400
+        return pipeline_result_store[-1], 225
 
     final_output = delimit_output_string(step4_result)
     pipeline_result_store.append(
-        {"step": "4. Final Synthesis", "status": "COMPLETE", "result": final_output}
+        {
+            "step": "4. Final Synthesis",
+            "status": "COMPLETE",
+            "result": final_output,
+            "good": True,
+        }
     )
 
     app.logger.info("--- Pipeline Completed Successfully ---")

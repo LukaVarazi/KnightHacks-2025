@@ -7,34 +7,32 @@ import {
 import ChatPanel from "./ChatPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import StepContext from "~/lib/context";
-import { useAtomValue } from "jotai";
-import { stepAtom } from "~/lib/atom";
+import { useAtom, useAtomValue } from "jotai";
+import { currentTabAtom, stepAtom } from "~/lib/atom";
 import Report from "./Report";
 
 export default function AddData() {
   const step = useAtomValue(stepAtom);
+  console.log({ step });
+  const [currentTab, setCurrentTab] = useAtom(currentTabAtom);
 
   return (
     <div className="flex flex-col gap-4 size-full">
-      <Tabs defaultValue="emt" className="size-full">
+      <Tabs
+        value={currentTab}
+        onValueChange={setCurrentTab}
+        defaultValue="emt"
+        className="size-full"
+      >
         <TabsList className="w-full flex items-center">
           <TabsTrigger value="emt">EMT / Ambulance</TabsTrigger>
-          <TabsTrigger
-            // disabled={step <= 2}
-            value="medical"
-          >
+          <TabsTrigger disabled={step < 2} value="medical">
             Medical Records
           </TabsTrigger>
-          <TabsTrigger
-            // disabled={step <= 3}
-            value="insurance"
-          >
+          <TabsTrigger disabled={step < 3} value="insurance">
             Insurnace Policy
           </TabsTrigger>
-          <TabsTrigger
-            // disabled={step <= 4}
-            value="report"
-          >
+          <TabsTrigger disabled={step < 4} value="report">
             Report
           </TabsTrigger>
         </TabsList>

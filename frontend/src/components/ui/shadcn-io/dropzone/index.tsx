@@ -7,6 +7,7 @@ import type { DropEvent, DropzoneOptions, FileRejection } from "react-dropzone";
 import { useDropzone } from "react-dropzone";
 import { Button } from "#/ui/button";
 import { cn } from "~/lib/utils";
+import SkipBtn from "#/SkipBtn";
 
 type DropzoneContextType = {
   src?: File[];
@@ -139,6 +140,10 @@ export const DropzoneContent = ({
       <p className="w-full text-wrap text-muted-foreground text-2xl">
         Drag and drop files for Tender Analysis
       </p>
+
+      <div className="mt-4">
+        <SkipBtn />
+      </div>
     </div>
   );
 };
