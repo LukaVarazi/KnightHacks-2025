@@ -22,9 +22,8 @@ services:
 
   agent:
     build:
-      context: back-end
+      context: agents
       dockerfile: Dockerfile
     restart: always
-    command: ["adk", "api_server"]
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
