@@ -8,6 +8,7 @@ import base64
 from flask import Flask, request, jsonify
 from pypdf import PdfReader 
 from typing import Tuple, Optional
+import sys
 
 # --- Configuration ---
 # !!! IMPORTANT: You MUST set your actual Gemini API Key here or use environment variables !!!
@@ -343,6 +344,7 @@ if __name__ == "__main__":
         print("\nRunning REJECT/INSUFFICIENT path...")
         parsedText = initialParse + "\n\nAction: Email"
         sortResult = callAgent(parsedText)
+        sys.exit("Program Terminated")
 
     dataSufficiency = find_data(sortResult)
     print(f"\nExtracted Data Sufficiency: {dataSufficiency}")
@@ -350,13 +352,14 @@ if __name__ == "__main__":
     sort2Result = ""
     if dataSufficiency == "SUFFICIENT DATA":
         # STEP 3:
-        print("\nRunning SUFFICIENT path...")
-        parsedText = initialParse + "\n\nAction: Wranggler2"
+        print("\nRunning SUFFICIENT DATA path...")
+        parsedText = initialParse + "\n\n" + sortResult + "\n\nAction: Wranggler2"
         sort2Result = callAgent(parsedText)
     else:
-        print("\nRunning REJECT/INSUFFICIENT path...")
+        print("\nRunning INSUFFICIENT DATA path...")
         parsedText = initialParse + "\n\nAction: Email"
         sort2Result = callAgent(parsedText)
+        sys.exit("Program Terminated")
 
     # STEP 4:
     combinedData = initialParse + "\n\n" + sortResult + "\n\n" + sort2Result
@@ -369,3 +372,4 @@ if __name__ == "__main__":
     print("\n--- Final Agent Response (Step 4 Action) ---")
     print(final_result)
     print("\n--- Pipeline Complete ---")
+    sys.exit("Program Terminated")
