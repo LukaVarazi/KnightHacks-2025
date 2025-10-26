@@ -1025,4 +1025,4 @@ if __name__ == "__main__":
     app.logger.setLevel(logging.INFO)
 
     # Run Flask application
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=False, port=80, use_reloader=False)
