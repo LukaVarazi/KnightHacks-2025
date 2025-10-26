@@ -15,12 +15,14 @@ from flask_cors import CORS
 
 from util import nuke_files, save_files
 
+from dotenv import load_dotenv
+
 # --- Configuration & Globals ---
 # NOTE: Using a placeholder API key. Replace with your actual key.
 GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY", "AIzaSyBkIZWumauo8F8HTVQTyeMGQ7jICWv7wNc"
+    "GEMINI_API_KEY",
 )
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2255:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 NATIVE_TEXT_THRESHOLD = 50
 
 # Agent Development Kit (ADK) Configuration
