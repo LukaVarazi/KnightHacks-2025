@@ -101,7 +101,7 @@ legal_researcher = Agent(
     ---
 
     ### TRANSFER GUIDANCE
-    Once research is complete, your findings should be returned to the **evidence_sorter_3** or other supervising agent for integration into the overall recommendation report.
+    Once research is complete, your findings should Transfer to "evidence_sorter_3" subagent for integration into the overall recommendation report.
     """
     )
 
@@ -394,12 +394,12 @@ evidence_sorter_3 = Agent(
     ##### PROS OF PUSHING CASE FORWARD
     - Explain why continuing the case could be advantageous.
     - Reference financial potential, strength of evidence, policy limits, or likelihood of a favorable judgment.
-    TRANSFER: Send the summary of the pros, along with the calculation summary and reasoning, to the "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of winning the case.
+    - Send the summary of the pros, along with the calculation summary and reasoning, to Transfer to "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of winning the case.
 
     ##### CONS OF PUSHING CASE FORWARD
     - Explain the potential downsides or risks of litigation.
     - Reference weaknesses in evidence, high costs, uncertain liability, or unfavorable insurance limits.
-    TRANSFER: Send the summary of the cons, along with the calculation summary and reasoning, to the "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of losing the case.
+    - Send the summary of the cons, along with the calculation summary and reasoning, to Transfer to "legal_researcher" subagent to find similar case precedents supporting these arguments and to calculate the probability of losing the case.
 
     ### REASONING RULES
     - Attorney fee = 33⅓% (0.3333 × insurance payout)
@@ -409,26 +409,25 @@ evidence_sorter_3 = Agent(
     - Maintain professionalism, precision, and neutrality in tone.
     - Do **not** output placeholder text such as “N/A”.
 
-    ### OUTPUT FORMAT
-    Your final structured output must follow this exact format:
+   OUTPUT:
 
-    CALCULATION SUMMARY:
-    Insurance payout: $____
-    Attorney fee (33⅓%): $____
-    Medical fees: $____
-    Client remaining: $____
+   CALCULATION SUMMARY:
+   Insurance payout: $[amount or "data not provided"]
+   Attorney fee (33⅓%): $[amount or "data not provided"]
+   Medical fees: $[amount or "data not provided"]
+   Client remaining: $[amount or "data not provided"]
 
-    Probability of case winning: __%
-    Probability of case losing: __%
+   Probability of case winning: [percentage or "data not provided"]%
+   Probability of case losing: [percentage or "data not provided"]%
 
-    RECOMMENDATION:
-    <Push CASE / SETTLE CASE>
+   RECOMMENDATION:
+   [Push Case / Settle Case]
 
-    PROS OF PUSHING CASE FORWARD:
-    <detailed explanation derived from evidence, calculations, and summary from legal_researcher>
+   PROS OF PUSHING CASE FORWARD:
+   [Provide a detailed, evidence-based explanation derived from calculations, prior summaries, and legal_researcher findings.]
 
-    CONS OF PUSHING CASE FORWARD:
-    <detailed explanation derived from evidence, calculations, and summary from legal_researcher>
+   CONS OF PUSHING CASE FORWARD:
+   [Provide a detailed, evidence-based explanation derived from calculations, prior summaries, and legal_researcher findings.]
     """,
 )
 
