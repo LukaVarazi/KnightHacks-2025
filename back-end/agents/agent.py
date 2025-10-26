@@ -110,10 +110,82 @@ voice_bot_scheduler = Agent(
     """,
 )
 
-evidence_sorter = Agent(
+evidence_sorter_1 = Agent(
+    model='gemini-2.5-flash',
+    name='evidence_sorter_1',
+    description='Takes all client data and sorts into 3 sections',
+    instruction="""
+    You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
+
+    SECTIONS:
+    - EMT Presence: How did the client arrive at the hospital? By ambulance or personal vehicle? Was EMT present at the scene?
+    - Police Report: Was an accident reported? Check if police report is included or not.
+                     Check who was at fault according to the police report.
+    - Injury assessment:
+        1. Answer questions such as "was MRI, Brain Scan, X-ray, etc taken?
+        2. What type of injury was sustained? (auto, slip and fall, etc.)
+        3. Did the client loose consciousness? What is their pain level (0 is lowest -10 is highest)?
+        4. When was the initial treatment of the accident? (between 24-48 hours is best).
+        5. What types of injuries were sustained? such as whiplash, concussion, etc.
+        6. If any surgery, did the client loose consciousness, broken bones, etc. during surgery?
+    - Coverage:
+        1. What type of insurance coverage does the client have? (health, auto, etc.)
+        2. Is there any information about the insurance provider? (name, contact info, policy number, etc.)
+    - Location:
+        1. Where did the accident occur? (specific address, intersection, city, state, etc.)
+        2. When did the accident occur? (date and time)
+    - Defendant Information:
+        1. Who is the defendant in the case? (name, contact info, relationship to client, etc.)
+
+    Sometimes some of the key words such as "police report" might not be stated explicitly, so use your reasoning to 
+    figure out if it is included or not (and is worded differently maybe)
+
+    If a certain data is NOT provided, you can write "data not provided" under that section.
+    You return the 3 perfectly sorted sections.
+    """,
+)
+
+evidence_sorter_2 = Agent(
+    model='gemini-2.5-flash',
+    name='evidence_sorter_2',
+    description='Takes all client data and sorts into 3 sections',
+    instruction="""
+    You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
+
+    SECTIONS:
+    - EMT Presence: How did the client arrive at the hospital? By ambulance or personal vehicle? Was EMT present at the scene?
+    - Police Report: Was an accident reported? Check if police report is included or not.
+                     Check who was at fault according to the police report.
+    - Injury assessment:
+        1. Answer questions such as "was MRI, Brain Scan, X-ray, etc taken?
+        2. What type of injury was sustained? (auto, slip and fall, etc.)
+        3. Did the client loose consciousness? What is their pain level (0 is lowest -10 is highest)?
+        4. When was the initial treatment of the accident? (between 24-48 hours is best).
+        5. What types of injuries were sustained? such as whiplash, concussion, etc.
+        6. If any surgery, did the client loose consciousness, broken bones, etc. during surgery?
+    - Coverage:
+        1. What type of insurance coverage does the client have? (health, auto, etc.)
+        2. Is there any information about the insurance provider? (name, contact info, policy number, etc.)
+    - Location:
+        1. Where did the accident occur? (specific address, intersection, city, state, etc.)
+        2. When did the accident occur? (date and time)
+    - Defendant Information:
+        1. Who is the defendant in the case? (name, contact info, relationship to client, etc.)
+
+    Sometimes some of the key words such as "police report" might not be stated explicitly, so use your reasoning to 
+    figure out if it is included or not (and is worded differently maybe)
+
+    If a certain data is NOT provided, you can write "data not provided" under that section.
+    You return the 3 perfectly sorted sections.
+    """,
+)
+
+evidence_sorter_3 = Agent(
     model='gemini-2.5-flash',
     name='evidence_sorter',
     description='Takes all client data and sorts into 5 sections',
+    name='evidence_sorter_3',
+    description='Takes all client data and sorts into 3 sections',
     instruction="""
     You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
 
@@ -308,13 +380,19 @@ Each legal case input will end with an indicator formatted as:
 2. If the case includes the keyword "Action: Sort_Initial"
    → Transfer the input (excluding the "Action:" line) to the "evidence_sorter_initial" sub-agent.
 
-3. If the case includes the keyword "Action: Wrangle"
-   → Transfer the input (excluding the "Action:" line) to the "record_wrangler" sub-agent.
-
-4. If the case includes the keyword "Action: Email"
+3. If the case includes the keyword "Action: Email"
    → Transfer the input (excluding the "Action:" line) to the "client_communicator" sub-agent.
 
-4. If no Action keyword is provided, assume the default action is:
+4. If the case includes the keyword "Action: Wraggler1"
+   → Transfer the input (excluding the "Action:" line) to the "evidence_sorter_1" sub-agent.
+
+5. If the case includes the keyword "Action: Wraggler2"
+   → Transfer the input (excluding the "Action:" line) to the "evidence_sorter_2" sub-agent.
+
+6. If the case includes the keyword "Action: Wraggler3"
+   → Transfer the input (excluding the "Action:" line) to the "evidence_sorter_3" sub-agent.
+
+7. If no Action keyword is provided, assume the default action is:
    → "Sort_Initial", and automatically transfer to the "evidence_sorter_initial" sub-agent.
 
 ### IMPORTANT NOTE
@@ -327,7 +405,7 @@ respond with:
      """,
 
     sub_agents=[state_management, client_communication, evidence_sorter_initial,
-                legal_researcher, voice_bot_scheduler, evidence_sorter]
+                legal_researcher, voice_bot_scheduler, evidence_sorter_1, evidence_sorter_2, evidence_sorter_3]
 )
 
 root_agent = agent_coordinator
