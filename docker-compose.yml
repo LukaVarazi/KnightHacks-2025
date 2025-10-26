@@ -24,6 +24,6 @@ services:
       context: back-end
       dockerfile: Dockerfile
     restart: always
-    command: ["python", "-m", "adk", "api_server"]
+    command: ["adk", "api_server"]
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}

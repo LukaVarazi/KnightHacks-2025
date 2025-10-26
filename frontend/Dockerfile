@@ -6,7 +6,7 @@ FROM oven/bun as builder
 WORKDIR /app
 
 # Copy package.json and bun.lockb (if used) to leverage Docker's layer caching
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 
 # Install dependencies using Bun
 # Replace `npm install` or `yarn install` with `bun install`
