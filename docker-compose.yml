@@ -1,11 +1,23 @@
 services:
-  web:
-    # Use the Dockerfile in the current directory (context: .) to build the image
+  frontend:
     build:
-      context: .
+      context: frontend
       dockerfile: Dockerfile
-    # Map container port 80 (Nginx default) to host port 8080 (or any other free port)
     ports:
-      - "8080:80"
-    # Restart the container if it stops for some reason
+      - "9998:80"
     restart: always
+
+  backend:
+    build:
+      context: back-end
+      dockerfile: Dockerfile
+    ports:
+      - "9999:80"
+    restart: always
+
+  agent:
+    build:
+      context: back-end
+      dockerfile: Dockerfile
+    restart: always
+    command: ["python", "-m", "adk", "api_server"]
