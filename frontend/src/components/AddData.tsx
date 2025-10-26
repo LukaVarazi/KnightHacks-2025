@@ -51,13 +51,13 @@ function ResizablePortion({ step }: { step: number }) {
   return (
     <StepContext.Provider value={step}>
       <ResizablePanelGroup direction="horizontal" className="rounded-lg border">
-        <ResizablePanel defaultSize={100}>
+        <ResizablePanel defaultSize={40}>
           <FileUpload />
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
-        <ResizablePanel defaultSize={0}>
+        <ResizablePanel minSize={30} defaultSize={60}>
           <ChatPanel />
         </ResizablePanel>
       </ResizablePanelGroup>

@@ -13,11 +13,13 @@ import { useAtomValue } from "jotai";
 import { useContext } from "react";
 import { stepOutputsAtom } from "~/lib/atom";
 import StepContext from "~/lib/context";
+import { Response } from "#/ui/shadcn-io/ai/response";
+import { ScrollArea } from "./ui/scroll-area";
 
 export default function ChatPanel() {
   const step = useContext(StepContext);
   const stepOutputs = useAtomValue(stepOutputsAtom);
-  const chatText = stepOutputs[step];
+  const chatText = stepOutputs[step - 1];
 
   if (!chatText) {
     return (
@@ -33,11 +35,13 @@ export default function ChatPanel() {
   }
 
   return (
-    <Conversation className="relative w-full h-full">
+    <Conversation className="relative w-full h-full overflow-y-auto">
       <ConversationContent>
         {chatText && (
           <Message from="assistant">
-            <MessageContent>test</MessageContent>
+            <MessageContent className="max-h-[70vh] overflow-y-auto">
+              <Response>{chatText}</Response>
+            </MessageContent>
             <MessageAvatar src="/logo.png" />
           </Message>
         )}
