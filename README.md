@@ -47,3 +47,9 @@ in the directory of the program, cd into the backend folder that hosts the agent
 adk web 
 ```
 then the program should respond
+
+# How to run api server (for testing python code with agents)
+1. in the terminal go to a folder that contains agent folder
+2. type "adk api_server"
+3. open another terminal (without closing previous)
+4. go to folder containing app.py and run "python app.py"
