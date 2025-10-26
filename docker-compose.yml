@@ -1,0 +1,11 @@
+services:
+  web:
+    # Use the Dockerfile in the current directory (context: .) to build the image
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Map container port 80 (Nginx default) to host port 8080 (or any other free port)
+    ports:
+      - "8080:80"
+    # Restart the container if it stops for some reason
+    restart: always
