@@ -1,9 +1,14 @@
 import { toast } from "sonner";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Button } from "./ui/button";
 import {
   filesAtom,
   loadingDataAtom,
+  reportConsAtom,
+  reportPercentAtom,
+  reportPercentExplanationAtom,
+  reportProstom,
+  reportStatusAtom,
   stepAtom,
   stepOutputsAtom,
 } from "~/lib/atom";
@@ -77,6 +82,17 @@ async function apiReq(step: number, files: File[]): Promise<[string, boolean]> {
   if (!data.good) {
     console.error(text);
     return [text, false];
+  }
+
+  if (step === 4) {
+    // Report step
+    const defaultStore = getDefaultStore();
+    defaultStore.set(reportStatusAtom, data.status);
+    defaultStore.set(reportProstom, data.pros);
+    defaultStore.set(reportConsAtom, data.cons);
+    const [percent, explanation] = data.percent.split(/\r?\n/, 2);
+    defaultStore.set(reportPercentAtom, percent);
+    defaultStore.set(reportPercentExplanationAtom, explanation);
   }
 
   return [text, true];

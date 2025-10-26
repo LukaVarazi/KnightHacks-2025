@@ -18,7 +18,7 @@ from util import nuke_files, save_files
 # --- Configuration & Globals ---
 # NOTE: Using a placeholder API key. Replace with your actual key.
 GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY", "AIzaSyDMDCgIhM03gtkHnGG6XLebhvC2FjVlhwY"
+    "GEMINI_API_KEY", "AIzaSyBkIZWumauo8F8HTVQTyeMGQ7jICWv7wNc"
 )
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2255:generateContent"
 NATIVE_TEXT_THRESHOLD = 50
@@ -911,23 +911,6 @@ def run_4() -> List[Dict[str, str]]:
         )
         return pipeline_result_store
 
-    recommendation = find_data_sufficiency(step4_result)
-    if recommendation in ["REJECT CASE", "INSUFFICIENT DATA"]:
-        status_label = (
-            "REJECTED" if recommendation == "REJECT CASE" else "INSUFFICIENT DATA"
-        )
-        final_output = step4_result
-        pipeline_result_store.append(
-            {
-                "step": "4. Final Synthesis",
-                "status": status_label,
-                "result": final_output,
-                "good": False,
-            }
-        )
-        app.logger.info(f"Pipeline stopped: {status_label}")
-        return pipeline_result_store[-1], 225
-
     final_output = delimit_output_string(step4_result)
     pipeline_result_store.append(
         {
@@ -935,6 +918,60 @@ def run_4() -> List[Dict[str, str]]:
             "status": "COMPLETE",
             "result": final_output,
             "good": True,
+            "pros": call_simple_gemini_api(
+                {
+                    "systemInstruction": {
+                        "parts": [
+                            {
+                                "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide and explain your reasoning on why the case SHOULD be taken on"
+                            }
+                        ]
+                    },
+                    "contents": [
+                        {
+                            "parts": [
+                                {"text": final_output},
+                            ]
+                        }
+                    ],
+                }
+            ),
+            "cons": call_simple_gemini_api(
+                {
+                    "systemInstruction": {
+                        "parts": [
+                            {
+                                "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide and explain your reasoning on why the case should NOT be taken on"
+                            }
+                        ]
+                    },
+                    "contents": [
+                        {
+                            "parts": [
+                                {"text": final_output},
+                            ]
+                        }
+                    ],
+                },
+            ),
+            "percent": call_simple_gemini_api(
+                {
+                    "systemInstruction": {
+                        "parts": [
+                            {
+                                "text": "You will be given information on a plaintiff law case. You will be given  an summary of the case with a recommended action. Upon reading the information decide on a percentage value from 0-100% to determine the value of the case from a law firm perspective. On the line immediately following write an explanation as to why you decided to rate the case that percentage value"
+                            }
+                        ]
+                    },
+                    "contents": [
+                        {
+                            "parts": [
+                                {"text": final_output},
+                            ]
+                        }
+                    ],
+                }
+            ),
         }
     )
 

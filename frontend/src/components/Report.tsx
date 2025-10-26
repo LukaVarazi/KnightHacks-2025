@@ -9,7 +9,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import { reportPartsAtom } from "~/lib/atom";
+import {
+  reportConsAtom,
+  reportPartsAtom,
+  reportPercentAtom,
+  reportPercentExplanationAtom,
+  reportProstom as reportProsAtom,
+  reportStatusAtom,
+} from "~/lib/atom";
 
 type FinalReportData = {
   caseStatus: string;
@@ -20,19 +27,19 @@ type FinalReportData = {
 };
 
 export default function ReportWrapper() {
-  const reportParts = useAtomValue(reportPartsAtom);
-  if (reportParts.length !== 5) {
-    console.error("why is the reports parts length not 5?");
-    return null;
-  }
+  const reportStatus = useAtomValue(reportStatusAtom);
+  const reportPros = useAtomValue(reportProsAtom);
+  const reportCons = useAtomValue(reportConsAtom);
+  const reportPercent = useAtomValue(reportPercentAtom);
+  const reportPercentExplanation = useAtomValue(reportPercentExplanationAtom);
 
   return (
     <Report
-      caseStatus={reportParts[0]}
-      percent={reportParts[1]}
-      percentBreakdown={reportParts[2]}
-      proText={reportParts[3]}
-      consText={reportParts[4]}
+      caseStatus={reportStatus}
+      percent={reportPercent}
+      percentBreakdown={reportPercentExplanation}
+      proText={reportPros}
+      consText={reportCons}
     />
   );
 }
