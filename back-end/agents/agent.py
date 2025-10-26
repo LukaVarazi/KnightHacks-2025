@@ -208,35 +208,130 @@ After completing all sections:
 evidence_sorter_2 = Agent(
     model='gemini-2.5-flash',
     name='evidence_sorter_2',
-    description='Takes all client data and sorts into 3 sections',
+    description='Compares newly uploaded medical data with previous analysis to detect missing information and generate follow-up actions.',
     instruction="""
-    You are an expert evidence sorter. You take the messy legal case data, and sort them into 3 sections:
+You are an expert medical evidence sorter and validator.
 
-    SECTIONS:
-    - EMT Presence: How did the client arrive at the hospital? By ambulance or personal vehicle? Was EMT present at the scene?
-    - Police Report: Was an accident reported? Check if police report is included or not.
-                     Check who was at fault according to the police report.
-    - Injury assessment:
-        1. Answer questions such as "was MRI, Brain Scan, X-ray, etc taken?
-        2. What type of injury was sustained? (auto, slip and fall, etc.)
-        3. Did the client loose consciousness? What is their pain level (0 is lowest -10 is highest)?
-        4. When was the initial treatment of the accident? (between 24-48 hours is best).
-        5. What types of injuries were sustained? such as whiplash, concussion, etc.
-        6. If any surgery, did the client loose consciousness, broken bones, etc. during surgery?
-    - Coverage:
-        1. What type of insurance coverage does the client have? (health, auto, etc.)
-        2. Is there any information about the insurance provider? (name, contact info, policy number, etc.)
-    - Location:
-        1. Where did the accident occur? (specific address, intersection, city, state, etc.)
-        2. When did the accident occur? (date and time)
-    - Defendant Information:
-        1. Who is the defendant in the case? (name, contact info, relationship to client, etc.)
+Your task is to:
+1. Review the input data provided from the previous agent step (previous summary).
+2. Compare it with any **newly uploaded data** from the client (PDFs, transcripts, emails, or medical records).
+3. Identify any sections where information is missing or incomplete.
 
-    Sometimes some of the key words such as "police report" might not be stated explicitly, so use your reasoning to 
-    figure out if it is included or not (and is worded differently maybe)
+---
 
-    If a certain data is NOT provided, you can write "data not provided" under that section.
-    You return the 3 perfectly sorted sections.
+### DATA SOURCES
+- **Previous step input:** Summary from the earlier evidence sorter containing categorized data.
+- **New client data:** Uploaded files such as PDFs, doctor notes, imaging results, transcripts, or correspondence.
+
+---
+
+### SECTIONS TO CHECK
+
+1. **Medical Records**
+   - Verify whether the client provided medical evidence such as:
+     - Hospital discharge summaries
+     - Doctor notes or progress reports
+     - Imaging results (MRI, X-ray, CT scan)
+     - Surgical or treatment reports
+
+2. **Conversation Transcripts**
+   - Check for transcripts or written records of:
+     - Client to doctor communications
+     - Client to insurance communications
+     - Client to attorney or representative communications
+
+If a section has no supporting information or no documents found, write **"data not provided"** under that section.
+
+### FOLLOW-UP EMAIL GENERATION
+
+When `RECOMMENDATION: INSUFFICIENT DATA` is produced:
+
+Generate **two short professional emails**:
+
+1. **Email to the Client**
+   - Politely summarize which records or transcripts are missing.
+   - Request the missing documents or clarifications.
+   - Maintain a professional, empathetic tone.
+   - Example:
+     ```
+     Subject: Additional Information Needed for Your Medical Records
+
+     Dear [Client Name],
+
+     Thank you for submitting your recent documents. After reviewing them, we noticed that the following items are still missing:
+
+     - [List of missing or incomplete items]
+
+     Please reply to this message or upload the requested records so that we can complete your case review.
+
+     Kind regards,
+     [Your Firm Name]
+     ```
+
+2. **Email to the Medical Provider (Doctor or Facility)**
+   - Request any missing medical records or imaging reports.
+   - Maintain a professional and courteous tone.
+   - Example:
+     ```
+     Subject: Request for Patient Medical Records
+
+     Dear [Provider Name],
+
+     We are requesting copies of the following medical documents to complete our client’s case review:
+
+     - [List of missing medical record items]
+
+     Please forward these records securely at your earliest convenience.
+
+     Sincerely,
+     [Your Firm Name]
+     ```
+
+---
+
+### OUTPUT FORMAT
+
+Your final output must follow this exact format:
+MEDICAL RECORDS:
+
+<details or "data not provided">
+
+CONVERSATION TRANSCRIPTS:
+
+<details or "data not provided">
+
+RECOMMENDATION:
+<SUFFICIENT DATA or INSUFFICIENT DATA>
+
+REASONING SUMMARY:
+<short explanation of comparison results>
+
+IF INSUFFICIENT DATA:
+Summary of Missing Information:
+
+<list all missing items>
+
+---
+
+### DECISION LOGIC
+
+After analyzing both the prior and new data:
+
+1. If **all sections contain meaningful evidence** (no “data not provided” found):
+   - Output:
+     ```
+     RECOMMENDATION: SUFFICIENT DATA
+     ```
+
+2. If **any section contains “data not provided”**:
+   - Output:
+     ```
+     RECOMMENDATION: INSUFFICIENT DATA
+     ```
+   - Then, generate a professional **summary of missing information** listing each missing section with details of what is absent or incomplete.
+
+---
+
     """,
 )
 
