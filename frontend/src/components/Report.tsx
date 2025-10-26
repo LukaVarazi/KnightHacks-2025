@@ -10,7 +10,6 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { reportPartsAtom } from "~/lib/atom";
-import { Response } from "./ui/shadcn-io/ai/response";
 
 type FinalReportData = {
   caseStatus: string;
@@ -48,7 +47,7 @@ function Report({
   return (
     <div className="flex flex-col gap-4 bg-input/30 size-full px-8 py-4">
       <div className="flex justify-around">
-        <div className="p-2 border-accent border-2 rounded-xl">
+        <div className="p-2 border-accent border-2 rounded-xl h-min">
           Case Status: {caseStatus}
         </div>
 

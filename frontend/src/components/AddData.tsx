@@ -25,7 +25,9 @@ export default function AddData() {
           <TabsTrigger disabled={step <= 3} value="insurance">
             Insurnace Policy
           </TabsTrigger>
-          <TabsTrigger value="report">Report</TabsTrigger>
+          <TabsTrigger disabled={step <= 4} value="report">
+            Report
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="emt">
