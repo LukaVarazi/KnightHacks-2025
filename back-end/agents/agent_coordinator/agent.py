@@ -1,9 +1,9 @@
 from google.adk.agents.llm_agent import Agent
 
 client_communication = Agent(
-    model='gemini-2.5-flash',
-    name='client_communication',
-    description='Drafts email for clients',
+    model="gemini-2.5-flash",
+    name="client_communication",
+    description="Drafts email for clients",
     instruction="""
     You are the **Client Communication Guru**, responsible for drafting client-facing messages.
 
@@ -29,9 +29,9 @@ client_communication = Agent(
 )
 
 legal_researcher = Agent(
-    model='gemini-2.5-flash',
-    name='legal_researcher',
-    description='Finds relevant case precedents, statutes, and legal reasoning to support or counter arguments in the recommender summary.',
+    model="gemini-2.5-flash",
+    name="legal_researcher",
+    description="Finds relevant case precedents, statutes, and legal reasoning to support or counter arguments in the recommender summary.",
     instruction="""
     You are the **Legal Research Specialist**, trained to find and summarize legal precedent, statutory references, and arguments relevant to ongoing client cases.
 
@@ -102,13 +102,13 @@ legal_researcher = Agent(
 
     ### TRANSFER GUIDANCE
     Once research is complete, your findings should Transfer to "evidence_sorter_3" subagent for integration into the overall recommendation report.
-    """
-    )
+    """,
+)
 
 voice_bot_scheduler = Agent(
-    model='gemini-2.5-flash',
-    name='voice_bot_scheduler',
-    description='schedules client meetings',
+    model="gemini-2.5-flash",
+    name="voice_bot_scheduler",
+    description="schedules client meetings",
     instruction="""
     You are the **Voice Bot Scheduler**, responsible for managing scheduling-related communication and coordination.
 
@@ -133,9 +133,9 @@ voice_bot_scheduler = Agent(
 )
 
 evidence_sorter_1 = Agent(
-    model='gemini-2.5-flash',
-    name='evidence_sorter_1',
-    description='Analyzes and organizes client case information into five legal evidence sections, detects missing data, and determines data sufficiency.',
+    model="gemini-2.5-flash",
+    name="evidence_sorter_1",
+    description="Analyzes and organizes client case information into five legal evidence sections, detects missing data, and determines data sufficiency.",
     instruction="""
     You are an expert legal evidence sorter. Your task is to analyze and organize client case data into the required five sections, assess whether all data is sufficient for further processing, and recommend the next step based on completeness.
 
@@ -224,13 +224,13 @@ After completing all sections:
         - Maintain a professional and empathetic tone.
     - Output `RECOMMENDATION: INSUFFICIENT DATA`
 ---
-"""
+""",
 )
 
 evidence_sorter_2 = Agent(
-    model='gemini-2.5-flash',
-    name='evidence_sorter_2',
-    description='Compares newly uploaded medical data with previous analysis to detect missing information and generate follow-up actions.',
+    model="gemini-2.5-flash",
+    name="evidence_sorter_2",
+    description="Compares newly uploaded medical data with previous analysis to detect missing information and generate follow-up actions.",
     instruction="""
 You are an expert medical evidence sorter and validator.
 
@@ -358,9 +358,9 @@ After analyzing both the prior and new data:
 )
 
 evidence_sorter_3 = Agent(
-    model='gemini-2.5-flash',
-    name='evidence_sorter_3',
-    description='Analyzes client and defendant insurance data, calculates financial outcomes, and recommends whether to push the case forward or settle.',
+    model="gemini-2.5-flash",
+    name="evidence_sorter_3",
+    description="Analyzes client and defendant insurance data, calculates financial outcomes, and recommends whether to push the case forward or settle.",
     instruction="""
     You are an expert financial and legal evidence sorter and validator specializing in insurance and settlement evaluations.
 
@@ -432,9 +432,9 @@ evidence_sorter_3 = Agent(
 )
 
 evidence_sorter_initial = Agent(
-    model='gemini-2.5-flash',
-    name='evidence_sorter_initial',
-    description='Takes all client data and makes initial sorting into 5 sections and make a recommendation',
+    model="gemini-2.5-flash",
+    name="evidence_sorter_initial",
+    description="Takes all client data and makes initial sorting into 5 sections and make a recommendation",
     instruction="""
 You are an expert legal evidence sorter and intake analyst.
 
@@ -567,9 +567,9 @@ This email must:
 )
 
 agent_coordinator = Agent(
-    model='gemini-2.5-flash',
-    name='agent_coordinator',
-    description='The main agent that oversees sub_agents.',
+    model="gemini-2.5-flash",
+    name="agent_coordinator",
+    description="The main agent that oversees sub_agents.",
     instruction="""
 You are the Agent Orchestrator. Your role is to receive a Legal Case input and decide which sub-agent to delegate it to.
 
@@ -620,9 +620,15 @@ If the input lacks an Action keyword or if the provided keyword is invalid,
 respond with:
 "Unable to determine sub-agent. Please include a valid Action keyword (Sort, Sort_Initial, or Wrangle)."
      """,
-
-    sub_agents=[client_communication, evidence_sorter_initial,
-                legal_researcher, voice_bot_scheduler, evidence_sorter_1, evidence_sorter_2, evidence_sorter_3]
+    sub_agents=[
+        client_communication,
+        evidence_sorter_initial,
+        legal_researcher,
+        voice_bot_scheduler,
+        evidence_sorter_1,
+        evidence_sorter_2,
+        evidence_sorter_3,
+    ],
 )
 
 root_agent = agent_coordinator
