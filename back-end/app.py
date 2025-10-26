@@ -18,7 +18,7 @@ from util import nuke_files, save_files
 # --- Configuration & Globals ---
 # NOTE: Using a placeholder API key. Replace with your actual key.
 GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY", "AIzaSyDLMUtIu-Bg0qykFwX-6p3-ST5JuWOOEm4"
+    "GEMINI_API_KEY", "AIzaSyDMDCgIhM03gtkHnGG6XLebhvC2FjVlhwY"
 )
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2255:generateContent"
 NATIVE_TEXT_THRESHOLD = 50
@@ -100,6 +100,28 @@ def call_gemini_api(payload, max_retries=5):
             headers = {"Content-Type": "application/json"}
             response = requests.post(
                 f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
+                headers=headers,
+                data=json.dumps(payload),
+                timeout=120,
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            if response.status_code in [429, 500, 503] and attempt < max_retries - 1:
+                wait_time = 2**attempt
+                time.sleep(wait_time)
+            else:
+                raise e
+    return None
+
+
+def call_simple_gemini_api(payload, max_retries=5):
+    """Handles API request and implements exponential backoff."""
+    for attempt in range(max_retries):
+        try:
+            headers = {"Content-Type": "application/json"}
+            response = requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}",
                 headers=headers,
                 data=json.dumps(payload),
                 timeout=120,
@@ -214,6 +236,37 @@ def parse_pdf_bytes(file_bytes: bytes) -> str:
         # Use the same image analysis prompt as it covers both OCR and visual description
         # We assume the PDF MIME type is handled by the model when passed as inlineData
         return analyze_image_bytes(file_bytes, "application/pdf")
+
+
+def prettify_output(string: str) -> str:
+    if not GEMINI_API_KEY:
+        raise ValueError("Gemini API Key is not configured.")
+
+    system_prompt = "You are an expert plain text to markdown converter. Convert and format the plain text as markdown for user convenience and readability. DO NOT CHANCE TEXT CONTENT."
+
+    payload = {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": [
+            {
+                "parts": [
+                    {"text": string},
+                ]
+            }
+        ],
+    }
+
+    gemini_response = call_simple_gemini_api(payload)
+    generated_text = (
+        gemini_response.get("candidates", [{}])[0]
+        .get("content", {})
+        .get("parts", [{}])[0]
+        .get("text", "")
+    )
+
+    if not generated_text:
+        raise Exception("Gemini returned an empty transcription response.")
+
+    return generated_text
 
 
 # --- ADK Agent Logic ---
@@ -629,6 +682,8 @@ def run_1() -> List[Dict[str, str]]:
     step1_result, status = callAgent(
         step1_prompt, app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
     )
+
+    step1_result = prettify_output(step1_result)
 
     if status != 200:
         pipeline_result_store.append(
